@@ -51,15 +51,15 @@ public class NeoForgeFolderEntry implements IConfigEntry
                 {
                     if(configValue.get() instanceof List<?>)
                     {
-                        builder.add(new ValueEntry(new NeoForgeListValue(configValue, this.spec.getRaw(configValue.getPath()))));
+                        builder.add(new ValueEntry(new NeoForgeListValue(configValue, this.spec.getSpec().getRaw(configValue.getPath()))));
                     }
                     else if(configValue.get() instanceof Enum<?>)
                     {
-                        builder.add(new ValueEntry(new NeoForgeEnumValue<>((ModConfigSpec.EnumValue<?>) configValue, this.spec.getRaw(configValue.getPath()))));
+                        builder.add(new ValueEntry(new NeoForgeEnumValue<>((ModConfigSpec.EnumValue<?>) configValue, this.spec.getSpec().getRaw(configValue.getPath()))));
                     }
                     else
                     {
-                        builder.add(new ValueEntry(new NeoForgeValue<>(configValue, this.spec.getRaw(configValue.getPath()))));
+                        builder.add(new ValueEntry(new NeoForgeValue<>(configValue, this.spec.getSpec().getRaw(configValue.getPath()))));
                     }
                 }
             });

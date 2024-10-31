@@ -2,7 +2,7 @@ package com.mrcrayfish.configured.impl.framework.handler;
 
 import com.mrcrayfish.configured.api.ConfigType;
 import com.mrcrayfish.configured.api.IModConfig;
-import com.mrcrayfish.configured.client.SessionData;
+import com.mrcrayfish.configured.client.ClientSessionData;
 import com.mrcrayfish.configured.client.screen.RequestScreen;
 import com.mrcrayfish.configured.impl.framework.FrameworkModConfig;
 import com.mrcrayfish.configured.impl.framework.message.MessageFramework;
@@ -27,7 +27,7 @@ public class FrameworkClientHandler
 
         // This is already checked on the server before sending the response, we just do an additional check on client
         Player player = minecraft.player;
-        if(!ConfigHelper.isOperator(player) || !SessionData.isDeveloper(player)) {
+        if(!ConfigHelper.isOperator(player) || !ClientSessionData.isDeveloper()) {
             requestScreen.handleResponse(null, Component.translatable("configured.gui.no_permission"));
             return;
         }

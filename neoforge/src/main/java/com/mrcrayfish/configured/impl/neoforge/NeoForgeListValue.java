@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class NeoForgeListValue<T> extends NeoForgeValue<List<T>> implements IListConfigValue<T>
 {
@@ -56,5 +57,23 @@ public class NeoForgeListValue<T> extends NeoForgeValue<List<T>> implements ILis
     public IListType<T> getListType()
     {
         return null;
+    }
+
+    @Override
+    public String createPropertyValue()
+    {
+        if(this.valueSpec instanceof ModConfigSpec.ListValueSpec listSpec)
+        {
+            Supplier<?> supplier = listSpec.getNewElementSupplier();
+            if(supplier != null)
+            {
+                Object newElement = supplier.get();
+                if(newElement != null)
+                {
+                    return newElement.toString();
+                }
+            }
+        }
+        return "";
     }
 }

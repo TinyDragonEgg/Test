@@ -4,16 +4,18 @@ import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.toml.TomlFormat;
 import com.mrcrayfish.configured.Constants;
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.ConfigType;
 import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
-import com.mrcrayfish.configured.client.SessionData;
+import com.mrcrayfish.configured.client.ClientSessionData;
 import com.mrcrayfish.configured.network.ForgeNetwork;
 import com.mrcrayfish.configured.network.message.play.MessageSyncForgeConfig;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import com.mrcrayfish.configured.util.ForgeConfigHelper;
 import net.minecraft.Util;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.config.ModConfig;
@@ -26,8 +28,8 @@ import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class ForgeConfig implements IModConfig
 {
@@ -50,7 +52,31 @@ public class ForgeConfig implements IModConfig
     }
 
     @Override
-    public void update(IConfigEntry entry)
+    public ConfigType getType()
+    {
+        return TYPE_RESOLVER.get(this.config.getType());
+    }
+
+    @Override
+    public String getFileName()
+    {
+        return this.config.getFileName();
+    }
+
+    @Override
+    public String getModId()
+    {
+        return this.config.getModId();
+    }
+
+    @Override
+    public IConfigEntry createRootEntry()
+    {
+        return new ForgeFolderEntry(this.spec.getValues(), this.spec);
+    }
+
+    @Override
+    public ActionResult update(IConfigEntry entry)
     {
         Set<IConfigValue<?>> changedValues = ConfigHelper.getChangedValues(entry);
         if(!changedValues.isEmpty())
@@ -95,42 +121,31 @@ public class ForgeConfig implements IModConfig
             this.spec.afterReload();
             ForgeConfigHelper.fireForgeConfigEvent(this.config, new ModConfigEvent.Reloading(this.config));
         }
+        return ActionResult.success();
     }
 
     @Override
-    public IConfigEntry getRoot()
+    public ActionResult loadWorldConfig(Path path)
     {
-        return new ForgeFolderEntry(this.spec.getValues(), this.spec);
+        if(this.config.getConfigData() == null)
+        {
+            try
+            {
+                final CommentedFileConfig data = this.config.getHandler().reader(path).apply(this.config);
+                ForgeConfigHelper.setForgeConfigData(this.config, data);
+                return ActionResult.success();
+            }
+            catch(Exception e)
+            {
+                Constants.LOG.error("Failed to load Forge world", e);
+                return ActionResult.fail();
+            }
+        }
+        return ActionResult.success();
     }
 
     @Override
-    public ConfigType getType()
-    {
-        return TYPE_RESOLVER.get(this.config.getType());
-    }
-
-    @Override
-    public String getFileName()
-    {
-        return this.config.getFileName();
-    }
-
-    @Override
-    public String getModId()
-    {
-        return this.config.getModId();
-    }
-
-    @Override
-    public void loadWorldConfig(Path path, Consumer<IModConfig> result)
-    {
-        final CommentedFileConfig data = this.config.getHandler().reader(path).apply(this.config);
-        ForgeConfigHelper.setForgeConfigData(this.config, data);
-        result.accept(this);
-    }
-
-    @Override
-    public void stopEditing()
+    public void stopEditing(boolean changed)
     {
         // Attempts to unload the server config if player simply just went back
         if(this.config != null && this.getType() == ConfigType.WORLD)
@@ -148,7 +163,7 @@ public class ForgeConfig implements IModConfig
     public boolean isChanged()
     {
         // Block world configs since the path is dynamic
-        if(ConfigHelper.isWorldConfig(this) && this.config.getConfigData() == null)
+        if(this.getType().isWorld() && this.config.getConfigData() == null)
             return false;
 
         // Check if any config value doesn't equal it's default
@@ -158,19 +173,20 @@ public class ForgeConfig implements IModConfig
     }
 
     @Override
-    public void restoreDefaults()
+    public Optional<Runnable> restoreDefaultsTask()
     {
-        // Block world configs since the path is dynamic
-        if(ConfigHelper.isWorldConfig(this) && this.config.getConfigData() == null)
-            return;
+        // Block unloaded world configs since the path is dynamic
+        if(this.getType().isWorld() && this.config.getConfigData() == null)
+            return Optional.empty();
 
-        // Creates a copy of the config data then pushes all at once to avoid multiple IO ops
-        CommentedConfig newConfig = CommentedConfig.copy(this.config.getConfigData());
-        this.allConfigValues.forEach(entry -> newConfig.set(entry.value.getPath(), entry.spec.getDefault()));
-        this.config.getConfigData().putAll(newConfig);
-
-        // Finally clear cache of all config values
-        this.allConfigValues.forEach(pair -> pair.value.clearCache());
+        return Optional.of(() -> {
+            // Creates a copy of the config data then pushes all at once to avoid multiple IO ops
+            CommentedConfig newConfig = CommentedConfig.copy(this.config.getConfigData());
+            this.allConfigValues.forEach(entry -> newConfig.set(entry.value.getPath(), entry.spec.getDefault()));
+            this.config.getConfigData().putAll(newConfig);
+            // Finally clear cache of all config values
+            this.allConfigValues.forEach(pair -> pair.value.clearCache());
+        });
     }
 
     private void syncToServer()
@@ -189,7 +205,7 @@ public class ForgeConfig implements IModConfig
 
         // Checked on server too
         Player player = ConfigHelper.getClientPlayer();
-        if(!ConfigHelper.isOperator(player) || !SessionData.isDeveloper(player))
+        if(!ConfigHelper.isOperator(player) || !ClientSessionData.isDeveloper())
             return;
 
         try

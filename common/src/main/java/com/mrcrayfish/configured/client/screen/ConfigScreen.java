@@ -2,13 +2,14 @@ package com.mrcrayfish.configured.client.screen;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.mrcrayfish.configured.Config;
 import com.mrcrayfish.configured.Constants;
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.ConfigType;
 import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
+import com.mrcrayfish.configured.client.EditingTracker;
 import com.mrcrayfish.configured.client.screen.widget.CheckBoxButton;
 import com.mrcrayfish.configured.client.screen.widget.ConfiguredButton;
 import com.mrcrayfish.configured.client.screen.widget.IconButton;
@@ -31,7 +32,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -88,7 +88,7 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
     {
         super(parent, title, 24);
         this.config = config;
-        this.folderEntry = config.getRoot();
+        this.folderEntry = config.createRootEntry();
     }
 
     @Override
@@ -172,24 +172,27 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
         {
             this.saveButton = this.addRenderableWidget(new IconButton(this.width / 2 - 140, this.height - 29, 22, 0, 90, Component.translatable("configured.gui.save"), (button) ->
             {
-                this.saveConfig();
-                if(ConfigHelper.getChangedValues(this.folderEntry).stream().anyMatch(IConfigValue::requiresGameRestart))
+                Runnable saveTask = () -> {
+                    ActionResult saveResult = this.saveConfig();
+                    if(!saveResult.asBoolean()) {
+                        Component message = saveResult.message().orElse(Component.translatable("configured.gui.update_error.generic"));
+                        ConfirmationScreen.showError(this.minecraft, this.parent, message);
+                    } else if(ConfigHelper.getChangedValues(this.folderEntry).stream().anyMatch(IConfigValue::requiresGameRestart)) {
+                        ConfirmationScreen.showInfo(this.minecraft, this.parent, Component.translatable("configured.gui.game_restart_needed"));
+                    } else if(this.minecraft.level != null && ConfigHelper.getChangedValues(this.folderEntry).stream().anyMatch(IConfigValue::requiresWorldRestart)) {
+                        ConfirmationScreen.showInfo(this.minecraft, this.parent, Component.translatable("configured.gui.world_restart_needed"));
+                    } else{
+                        this.minecraft.setScreen(this.parent);
+                    }
+                };
+                ActionResult confirmationResult = this.config.showSaveConfirmation(this.minecraft.player);
+                if(confirmationResult.asBoolean() && confirmationResult.message().isPresent())
                 {
-                    ConfirmationScreen confirm = new ConfirmationScreen(this.parent, Component.translatable("configured.gui.game_restart_needed"), ConfirmationScreen.Icon.INFO, result -> true);
-                    confirm.setPositiveText(Component.translatable("configured.gui.close"));
-                    confirm.setNegativeText(null);
-                    this.minecraft.setScreen(confirm);
-                }
-                else if(this.minecraft.level != null && ConfigHelper.getChangedValues(this.folderEntry).stream().anyMatch(IConfigValue::requiresWorldRestart))
-                {
-                    ConfirmationScreen confirm = new ConfirmationScreen(this.parent, Component.translatable("configured.gui.world_restart_needed"), ConfirmationScreen.Icon.INFO, result -> true);
-                    confirm.setPositiveText(Component.translatable("configured.gui.close"));
-                    confirm.setNegativeText(null);
-                    this.minecraft.setScreen(confirm);
+                    this.minecraft.setScreen(this.createSaveConfirmationScreen(confirmationResult, saveTask));
                 }
                 else
                 {
-                    this.minecraft.setScreen(this.parent);
+                    saveTask.run();
                 }
             }));
             this.restoreButton = this.addRenderableWidget(new IconButton(this.width / 2 - 45, this.height - 29, 0, 0, 90, Component.translatable("configured.gui.reset_all"), (button) ->
@@ -238,12 +241,32 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
         this.addRenderableWidget(this.deepSearchCheckBox);
     }
 
-    private void saveConfig()
+    private ActiveConfirmationScreen createSaveConfirmationScreen(ActionResult confirmationResult, Runnable saveTask)
+    {
+        ActiveConfirmationScreen screen = new ActiveConfirmationScreen(this, this.config, confirmationResult.message().get(), ConfirmationScreen.Icon.INFO, result -> {
+            if(result) {
+                saveTask.run();
+                return false;
+            }
+            return true;
+        });
+        screen.setPositiveText(Component.translatable("configured.gui.save"));
+        screen.setNegativeText(CommonComponents.GUI_BACK);
+        return screen;
+    }
+
+    private ActionResult saveConfig()
     {
         // Don't need to save if nothing changed
         if(!this.isChanged(this.folderEntry) || this.config == null)
-            return;
-        this.config.update(this.folderEntry);
+            return ActionResult.success();
+
+        ActionResult result = this.config.update(this.folderEntry);
+        if(result.asBoolean())
+        {
+            EditingTracker.instance().markChanged();
+        }
+        return result;
     }
 
     private void showRestoreScreen()

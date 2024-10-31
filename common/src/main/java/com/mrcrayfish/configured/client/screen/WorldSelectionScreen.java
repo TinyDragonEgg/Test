@@ -4,7 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.hash.Hashing;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
+import com.mrcrayfish.configured.Constants;
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.IModConfig;
 import com.mrcrayfish.configured.client.screen.widget.IconButton;
 import com.mrcrayfish.configured.client.util.ScreenUtil;
@@ -207,21 +208,26 @@ public class WorldSelectionScreen extends ListMenuScreen
         {
             try(LevelStorageSource.LevelStorageAccess storageAccess = Minecraft.getInstance().getLevelSource().createAccess(worldFileName))
             {
+                // TODO move to config specific
                 Path worldConfigPath = storageAccess.getLevelPath(SERVER_CONFIG_FOLDER);
                 PathUtils.createParentDirectories(worldConfigPath);
                 if(!Files.isDirectory(worldConfigPath))
                     Files.createDirectory(worldConfigPath);
-                WorldSelectionScreen.this.config.loadWorldConfig(worldConfigPath, T -> {
-                    if(Services.PLATFORM.isModLoaded(T.getModId())) {
-                        Component configName = Component.literal(ModConfigSelectionScreen.createLabelFromModConfig(WorldSelectionScreen.this.config));
-                        Component newTitle = Component.literal(worldName).copy().append(Component.literal(" > ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)).append(configName);
-                        WorldSelectionScreen.this.minecraft.setScreen(new ConfigScreen(WorldSelectionScreen.this.parent, newTitle, T));
-                    }
-                });
+                ActionResult result = WorldSelectionScreen.this.config.loadWorldConfig(worldConfigPath);
+                if(result.asBoolean())
+                {
+                    Component configName = Component.literal(ModConfigSelectionScreen.createLabelFromModConfig(WorldSelectionScreen.this.config));
+                    Component newTitle = Component.literal(worldName).copy().append(Component.literal(" > ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)).append(configName);
+                    WorldSelectionScreen.this.minecraft.setScreen(new ConfigScreen(WorldSelectionScreen.this.parent, newTitle, WorldSelectionScreen.this.config));
+                    return;
+                }
+                Component message = result.message().orElse(Component.translatable("configured.gui.load_world_config_failed"));
+                ConfirmationScreen.showError(WorldSelectionScreen.this.minecraft, WorldSelectionScreen.this, message);
             }
             catch(IOException e)
             {
-                e.printStackTrace();
+                Constants.LOG.error("Failed to load world config", e);
+                ConfirmationScreen.showError(WorldSelectionScreen.this.minecraft, WorldSelectionScreen.this, Component.translatable("configured.gui.load_world_config_exception"));
             }
         }
     }

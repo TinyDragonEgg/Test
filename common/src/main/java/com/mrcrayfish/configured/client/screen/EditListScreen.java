@@ -1,17 +1,15 @@
 package com.mrcrayfish.configured.client.screen;
 
 import com.google.common.collect.ImmutableList;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
+import com.mrcrayfish.configured.client.screen.list.IListConfigValue;
 import com.mrcrayfish.configured.client.screen.list.IListType;
 import com.mrcrayfish.configured.client.screen.list.ListTypes;
 import com.mrcrayfish.configured.client.screen.widget.ConfiguredButton;
 import com.mrcrayfish.configured.client.screen.widget.IconButton;
 import com.mrcrayfish.configured.client.util.ScreenUtil;
-import com.mrcrayfish.configured.util.ConfigHelper;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -21,7 +19,6 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -66,12 +63,11 @@ public class EditListScreen<T> extends Screen implements IEditing
                 this.minecraft.setScreen(this.parent);
             }));
             this.addRenderableWidget(new IconButton(this.width / 2 - 45, this.height - 29, 22, 33, 90, Component.translatable("configured.gui.add_value"), (button) -> {
-                this.minecraft.setScreen(new EditStringScreen(EditListScreen.this, this.config, Component.translatable("configured.gui.edit_value"), "", s -> {
+                String newValue = this.holder instanceof IListConfigValue<T> listValue ? listValue.createPropertyValue() : "";
+                this.minecraft.setScreen(new EditStringScreen(EditListScreen.this, this.config, Component.translatable("configured.gui.edit_value"), newValue, s -> {
                     T value = this.listType.getValueParser().apply(s);
-                    if(value != null)
-                    {
-                        if(this.holder.isValid(Collections.singletonList(value)))
-                        {
+                    if(value != null) {
+                        if(this.holder.isValid(Collections.singletonList(value))) {
                             return Pair.of(true, CommonComponents.EMPTY);
                         }
                         return Pair.of(false, this.holder.getValidationHint());

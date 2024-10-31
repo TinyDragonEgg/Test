@@ -1,17 +1,11 @@
 package com.mrcrayfish.configured.client.screen;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mrcrayfish.configured.client.screen.widget.IconButton;
 import com.mrcrayfish.configured.client.util.ScreenUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -88,7 +82,7 @@ public class ConfirmationScreen extends Screen
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         graphics.blit(IconButton.ICONS, this.width / 2 - 10, this.startY - 30, 20, 20, this.icon.u(), this.icon.v(), 10, 10, 64, 64);
 
-        this.drawListBackground(graphics, 0, this.width, this.startY, this.endY);
+        drawListBackground(graphics, 0, this.width, this.startY, this.endY);
 
         for(int i = 0; i < lines.size(); i++)
         {
@@ -155,5 +149,23 @@ public class ConfirmationScreen extends Screen
         graphics.blit(headerTexture, startX, startY - 2, 0, 0, endX - startX, 2, 32, 2);
         graphics.blit(footerTexture, startX, endY, 0, 0, endX - startX, 2, 32, 2);
         RenderSystem.disableBlend();
+    }
+
+    public static void showInfo(Minecraft minecraft, Screen parent, Component message)
+    {
+        showMessage(minecraft, parent, message, Icon.INFO);
+    }
+
+    public static void showError(Minecraft minecraft, Screen parent, Component message)
+    {
+        showMessage(minecraft, parent, message, Icon.ERROR);
+    }
+
+    private static void showMessage(Minecraft minecraft, Screen parent, Component message, ConfirmationScreen.Icon icon)
+    {
+        ConfirmationScreen confirm = new ConfirmationScreen(parent, message, icon, result -> true);
+        confirm.setPositiveText(Component.translatable("configured.gui.close"));
+        confirm.setNegativeText(null);
+        minecraft.setScreen(confirm);
     }
 }

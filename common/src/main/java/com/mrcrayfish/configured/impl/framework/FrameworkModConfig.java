@@ -7,10 +7,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.mrcrayfish.configured.Constants;
 import com.mrcrayfish.configured.api.ConfigType;
+import com.mrcrayfish.configured.api.Environment;
+import com.mrcrayfish.configured.api.ExecutionContext;
 import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
-import com.mrcrayfish.configured.client.SessionData;
+import com.mrcrayfish.configured.api.ActionResult;
+import com.mrcrayfish.configured.client.ClientSessionData;
 import com.mrcrayfish.configured.impl.framework.message.MessageFramework;
 import com.mrcrayfish.configured.platform.Services;
 import com.mrcrayfish.configured.util.ConfigHelper;
@@ -19,6 +22,7 @@ import com.mrcrayfish.framework.api.config.event.FrameworkConfigEvents;
 import com.mrcrayfish.framework.config.FrameworkConfigManager;
 import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.Util;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import org.apache.commons.lang3.StringUtils;
 
@@ -30,8 +34,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * Author: MrCrayfish
@@ -61,28 +65,28 @@ public class FrameworkModConfig implements IModConfig
     }
 
     @Override
-    public void update(IConfigEntry entry)
+    public ActionResult update(IConfigEntry entry)
     {
         Preconditions.checkState(this.config.getConfig() != null, "Tried to update a config that is not loaded");
 
         // Prevent updating if read only or not a modifiable config
-        if(this.config.isReadOnly() || !(this.config.getConfig() instanceof Config))
-            return;
+        if(this.config.isReadOnly() || !(this.config.getConfig() instanceof Config configData))
+            return ActionResult.fail(Component.translatable("configured.gui.update_error.read_only"));
 
         // Find changed values and return if nothing changed
         Set<IConfigValue<?>> changedValues = ConfigHelper.getChangedValues(entry);
         if(changedValues.isEmpty())
-            return;
+            return ActionResult.success();
 
         // Update the config with new changes
-        CommentedConfig newConfig = CommentedConfig.copy(this.config.getConfig());
+        CommentedConfig newConfigData = CommentedConfig.inMemory();
         changedValues.forEach(value -> {
             if(value instanceof FrameworkValue<?> frameworkValue) {
-                newConfig.set(frameworkValue.getPath(), frameworkValue.get());
+                newConfigData.set(frameworkValue.getPath(), frameworkValue.get());
             }
         });
-        this.config.correct(newConfig);
-        ((Config) this.config.getConfig()).putAll(newConfig);
+        configData.putAll(newConfigData);
+        this.config.correct(configData);
         this.config.getAllProperties().forEach(AbstractProperty::invalidateCache);
 
         // Post handling
@@ -92,24 +96,25 @@ public class FrameworkModConfig implements IModConfig
             {
                 // Unload world configs since still in main menu
                 this.config.unload(false); // TODO figure this out
-                return;
+                return ActionResult.success();
             }
 
             this.syncToServer();
 
-            if(!ConfigHelper.isRunningLocalServer() && !this.getType().isSync())
+            if(!ConfigHelper.isIntegratedServer() && !this.getType().isSync())
             {
                 this.config.unload(false);
-                return;
+                return ActionResult.success();
             }
         }
 
         Constants.LOG.info("Sending config reloading event for {}", this.getFileName());
         FrameworkConfigEvents.RELOAD.post().handle(this.config.getSource());
+        return ActionResult.success();
     }
 
     @Override
-    public IConfigEntry getRoot()
+    public IConfigEntry createRootEntry()
     {
         return new FrameworkFolderEntry(this.map);
     }
@@ -133,13 +138,18 @@ public class FrameworkModConfig implements IModConfig
     }
 
     @Override
-    public void loadWorldConfig(Path path, Consumer<IModConfig> result) throws IOException
+    public ActionResult loadWorldConfig(Path path)
     {
-        this.config.load(path, false);
-        if(this.config.getConfig() != null)
+        if(!this.config.isLoaded())
         {
-            result.accept(this);
+            this.config.load(path, false);
+            if(this.config.isLoaded())
+            {
+                return ActionResult.success();
+            }
+            return ActionResult.fail(Component.literal("Failed to load Framework world config"));
         }
+        return ActionResult.success();
     }
 
     @Override
@@ -155,9 +165,15 @@ public class FrameworkModConfig implements IModConfig
     }
 
     @Override
-    public void restoreDefaults()
+    public Optional<Runnable> restoreDefaultsTask()
     {
-        this.config.restoreDefaults();
+        if(this.config.isReadOnly())
+            return Optional.empty();
+
+        if(FrameworkConfigHelper.isWorldType(this.config) && !this.config.isLoaded())
+            return Optional.empty();
+
+        return Optional.of(this.config::restoreDefaults);
     }
 
     @Override
@@ -170,7 +186,7 @@ public class FrameworkModConfig implements IModConfig
     }
 
     @Override
-    public void stopEditing()
+    public void stopEditing(boolean changed)
     {
         if(this.config.getConfig() == null)
             return;
@@ -178,33 +194,73 @@ public class FrameworkModConfig implements IModConfig
         if(!this.getType().isServer())
             return;
 
-        if(ConfigHelper.isPlayingGame() && (ConfigHelper.isRunningLocalServer() || this.getType().isSync()))
+        if(ConfigHelper.isPlayingGame() && (ConfigHelper.isIntegratedServer() || this.getType().isSync()))
             return;
 
         this.config.unload(false);
     }
 
     @Override
-    public void requestFromServer()
+    public Optional<Runnable> requestFromServerTask()
     {
-        if(!ConfigHelper.isPlayingGame())
-            return;
+        if(this.config.getType().isServer() && !this.config.getType().isSync() && this.config.getType().getEnv().stream().noneMatch(com.mrcrayfish.framework.api.Environment::isDedicatedServer))
+        {
+            return Optional.of(() -> Services.PLATFORM.sendFrameworkConfigRequest(this.config.getName()));
+        }
+        return Optional.empty();
+    }
 
-        if(!ConfigHelper.isConfiguredInstalledOnServer())
-            return;
-
-        if(!this.getType().isServer() || this.getType() == ConfigType.DEDICATED_SERVER)
-            return;
-
-        Player player = ConfigHelper.getClientPlayer();
-        if(!ConfigHelper.isOperator(player) || !SessionData.isDeveloper(player))
-            return;
-
-        Services.PLATFORM.sendFrameworkConfigRequest(this.config.getName());
+    @Override
+    public ActionResult canPlayerEdit(Player player)
+    {
+        ExecutionContext context = new ExecutionContext(player);
+        if(context.isClient())
+        {
+            return switch(this.getType()) {
+                case DEDICATED_SERVER -> ActionResult.fail();
+                case CLIENT, UNIVERSAL, MEMORY -> ActionResult.success();
+                case SERVER, WORLD, SERVER_SYNC, WORLD_SYNC -> {
+                    if(context.isMainMenu() || context.isSingleplayer()) {
+                        yield ActionResult.success();
+                    }
+                    if(context.isPlayingOnLan()) {
+                        if(context.isIntegratedServerOwnedByPlayer()) {
+                            yield ActionResult.success();
+                        } else {
+                            yield ActionResult.fail(Component.translatable("configured.gui.lan_server"));
+                        }
+                    }
+                    if(context.isPlayingOnRemoteServer()) {
+                        if(context.isPlayerAnOperator() && context.isDeveloperPlayer()) {
+                            yield ActionResult.success();
+                        } else {
+                            yield ActionResult.fail(Component.translatable("configured.gui.no_developer_status"));
+                        }
+                    }
+                    yield ActionResult.fail(Component.translatable("configured.gui.no_permission"));
+                }
+            };
+        }
+        else if(context.isDedicatedServer())
+        {
+            return switch(this.getType()) {
+                case CLIENT, UNIVERSAL, MEMORY, DEDICATED_SERVER -> ActionResult.fail();
+                case SERVER, WORLD, SERVER_SYNC, WORLD_SYNC -> {
+                    if(context.isPlayerAnOperator() && context.isDeveloperPlayer()) {
+                        yield ActionResult.success();
+                    }
+                    yield ActionResult.fail();
+                }
+            };
+        }
+        return ActionResult.fail();
     }
 
     private void syncToServer()
     {
+        if(Services.PLATFORM.getEnvironment() != Environment.CLIENT)
+            return;
+
         if(this.config.getConfig() == null)
             return;
 
@@ -221,7 +277,7 @@ public class FrameworkModConfig implements IModConfig
             return;
 
         Player player = ConfigHelper.getClientPlayer();
-        if(!ConfigHelper.isOperator(player) || !SessionData.isDeveloper(player))
+        if(!ConfigHelper.isOperator(player) || !ClientSessionData.isDeveloper())
             return;
 
         ByteArrayOutputStream stream = new ByteArrayOutputStream();

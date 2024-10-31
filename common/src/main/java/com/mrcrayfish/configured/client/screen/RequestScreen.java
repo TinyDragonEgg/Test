@@ -1,5 +1,6 @@
 package com.mrcrayfish.configured.client.screen;
 
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.IModConfig;
 import com.mrcrayfish.configured.client.util.ScreenUtil;
 import net.minecraft.Util;
@@ -7,7 +8,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 
 import org.jetbrains.annotations.Nullable;
 import java.util.List;
@@ -26,12 +26,16 @@ public class RequestScreen extends ListMenuScreen implements IEditing
     private boolean failed;
     private Component message = null;
     private final IModConfig config;
+    private final Runnable task;
     private IModConfig response;
 
     protected RequestScreen(Screen parent, Component title, IModConfig config)
     {
         super(parent, title, 20);
         this.config = config;
+        this.task = config.requestFromServerTask().orElseThrow(() -> {
+            return new IllegalArgumentException("Cannot supply a non-requestable config to be requested");
+        });
     }
 
     @Override
@@ -49,7 +53,16 @@ public class RequestScreen extends ListMenuScreen implements IEditing
         super.init();
         if(!this.requested)
         {
-            this.config.requestFromServer();
+            // Permission is also checked on the server, this is just for client experience
+            ActionResult permission = this.config.canPlayerEdit(this.minecraft.player);
+            if(permission.asBoolean())
+            {
+                this.task.run();
+            }
+            else
+            {
+                this.handleResponse(null, Component.translatable("configured.gui.no_permission"));
+            }
             this.requested = true;
         }
         this.addRenderableWidget(ScreenUtil.button(this.width / 2 - 75, this.height - 29, 150, 20, CommonComponents.GUI_CANCEL, button -> this.minecraft.setScreen(this.parent)));

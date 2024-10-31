@@ -1,8 +1,12 @@
 package com.mrcrayfish.configured.client;
 
 import com.mrcrayfish.configured.Constants;
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.IModConfig;
+import com.mrcrayfish.configured.client.screen.ActiveConfirmationScreen;
+import com.mrcrayfish.configured.client.screen.ConfirmationScreen;
 import com.mrcrayfish.configured.client.screen.IEditing;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
 /**
@@ -11,6 +15,7 @@ import net.minecraft.client.gui.screens.Screen;
 public class EditingTracker
 {
     private IModConfig editingConfig;
+    private boolean changed;
 
     private static EditingTracker instance;
 
@@ -32,6 +37,7 @@ public class EditingTracker
         {
             if(this.editingConfig == null)
             {
+                this.changed = false;
                 this.editingConfig = editing.getActiveConfig();
                 this.editingConfig.startEditing();
                 Constants.LOG.info("Started editing '" + this.editingConfig.getFileName() + "'");
@@ -48,8 +54,14 @@ public class EditingTracker
         else if(this.editingConfig != null)
         {
             Constants.LOG.info("Stopped editing '" + this.editingConfig.getFileName() + "'");
-            this.editingConfig.stopEditing();
+            this.editingConfig.stopEditing(this.changed);
             this.editingConfig = null;
+            this.changed = false;
         }
+    }
+
+    public void markChanged()
+    {
+        this.changed = true;
     }
 }

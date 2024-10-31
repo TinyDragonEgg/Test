@@ -3,12 +3,13 @@ package com.mrcrayfish.configured.client.screen;
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mrcrayfish.configured.api.ConfigType;
+import com.mrcrayfish.configured.api.ExecutionContext;
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.Environment;
 import com.mrcrayfish.configured.api.IModConfig;
-import com.mrcrayfish.configured.client.SessionData;
+import com.mrcrayfish.configured.client.ClientConfigHelper;
 import com.mrcrayfish.configured.client.screen.widget.IconButton;
 import com.mrcrayfish.configured.client.util.ScreenUtil;
-import com.mrcrayfish.configured.platform.Services;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -16,14 +17,12 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import org.apache.commons.io.FilenameUtils;
 
@@ -56,28 +55,30 @@ public class ModConfigSelectionScreen extends ListMenuScreen
         {
             entries.add(new TitleItem(Component.translatable("configured.gui.title.client_configuration").getString()));
             List<Item> localEntries = new ArrayList<>();
-            localConfigs.forEach(config -> localEntries.add(new FileItem(config)));
+            localConfigs.forEach(config -> localEntries.add(new FileItem(this, config)));
             Collections.sort(localEntries);
             entries.addAll(localEntries);
         }
 
+        Player player = Minecraft.getInstance().player;
+        ExecutionContext context = new ExecutionContext(player);
         Set<IModConfig> remoteConfigs = this.getRemoteConfigs();
-        if(!remoteConfigs.isEmpty() && (!ConfigHelper.isPlayingGame() || ConfigHelper.isConfiguredInstalledOnServer()))
+        if(!remoteConfigs.isEmpty() && (context.isMainMenu() || context.isConfiguredInstalledRemotely()))
         {
-            Player player = Minecraft.getInstance().player;
-            if(ConfigHelper.isPlayingGame() && isPlayingRemotely())
+            if(context.isPlayingGame() && context.isPlayingOnRemoteServer())
             {
-                if(SessionData.isLan())
+                if(context.isPlayingOnLan() && !context.isIntegratedServerOwnedByPlayer())
                 {
                     entries.add(new TitleItem(Component.translatable("configured.gui.title.server_configuration").getString()));
                     entries.add(new TitleItem(Component.translatable("configured.gui.lan_server")));
                     return;
                 }
 
-                if(!ConfigHelper.isOperator(player))
+                // Don't show developer hint if not at least an operator
+                if(!context.isPlayerAnOperator())
                     return;
 
-                if(!SessionData.isDeveloper(player))
+                if(!context.isDeveloperPlayer())
                 {
                     entries.add(new TitleItem(Component.translatable("configured.gui.title.server_configuration").getString()));
                     entries.add(new MultiTextItem(
@@ -91,7 +92,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
 
             entries.add(new TitleItem(Component.translatable("configured.gui.title.server_configuration").getString()));
             List<Item> remoteEntries = new ArrayList<>();
-            remoteConfigs.forEach(config -> remoteEntries.add(new FileItem(config)));
+            remoteConfigs.forEach(config -> remoteEntries.add(new FileItem(this, config)));
             Collections.sort(remoteEntries);
             entries.addAll(remoteEntries);
         }
@@ -121,21 +122,26 @@ public class ModConfigSelectionScreen extends ListMenuScreen
 
     public class FileItem extends Item
     {
+        protected final TooltipScreen screen;
         protected final IModConfig config;
         protected final Component title;
         protected final Component fileName;
+        protected final Component modifyTooltip;
         protected final Button modifyButton;
         @Nullable
         protected final Button restoreButton;
 
-        public FileItem(IModConfig config)
+        public FileItem(TooltipScreen screen, IModConfig config)
         {
             super(createLabelFromModConfig(config));
+            this.screen = screen;
             this.config = config;
             this.title = this.createTrimmedFileName(createLabelFromModConfig(config));
             this.fileName = this.createTrimmedFileName(config.getFileName()).withStyle(ChatFormatting.DARK_GRAY);
             this.modifyButton = this.createModifyButton(config);
-            this.modifyButton.active = canEditConfig(Minecraft.getInstance().player, config);
+            ActionResult result = config.canPlayerEdit(Minecraft.getInstance().player);
+            this.modifyButton.active = result.asBoolean();
+            this.modifyTooltip = result.message().orElse(Component.translatable("configured.gui.no_permission"));
             this.restoreButton = this.createRestoreButton(config);
             this.updateRestoreDefaultButton();
         }
@@ -145,7 +151,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
             ConfirmationScreen confirmScreen = new ConfirmationScreen(ModConfigSelectionScreen.this, Component.translatable("configured.gui.restore_message"), ConfirmationScreen.Icon.WARNING, result -> {
                 if(!result)
                     return true;
-                this.config.restoreDefaults();
+                this.config.restoreDefaultsTask().ifPresent(Runnable::run);
                 this.updateRestoreDefaultButton();
                 return true;
             });
@@ -174,44 +180,49 @@ public class ModConfigSelectionScreen extends ListMenuScreen
          */
         private Button createModifyButton(IModConfig config)
         {
-            int width = canRestoreConfig(Minecraft.getInstance().player, config) ? 60 : 82;
+            int width = ConfigHelper.canRestoreConfig(config, Minecraft.getInstance().player) ? 60 : 82;
             return new IconButton(0, 0, this.getModifyIconU(config), this.getModifyIconV(config), width, this.getModifyLabel(config), button ->
             {
+                // Disable all handling if not active or visible
                 if(!button.isActive() || !button.visible)
                     return;
 
+                // Check if the player can edit the config
+                if(!config.canPlayerEdit(Minecraft.getInstance().player).asBoolean())
+                    return;
+
+                // We can never edit dedicated server type configs
+                if(config.getType() == ConfigType.DEDICATED_SERVER)
+                    return;
+
                 // If you're at the main menu, not loaded into a world
-                if(!ConfigHelper.isPlayingGame())
+                ExecutionContext context = new ExecutionContext(Minecraft.getInstance().player);
+                if(context.isMainMenu())
                 {
-                    if(ConfigHelper.isWorldConfig(config))
+                    if(config.getType().isWorld())
                     {
                         Minecraft.getInstance().setScreen(new WorldSelectionScreen(ModConfigSelectionScreen.this, config, this.title));
+                        return;
                     }
-                    else if(config.getType() != ConfigType.DEDICATED_SERVER)
+                    else if(config.getType().isServer())
                     {
                         Component newTitle = ModConfigSelectionScreen.this.title.copy().append(Component.literal(" > ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)).append(this.title);
                         Minecraft.getInstance().setScreen(new ConfigScreen(ModConfigSelectionScreen.this, newTitle, config));
+                        return;
                     }
-                    return;
                 }
 
                 // If you're playing on a dedicated server and the config is a non-sync server type
-                if(isPlayingRemotely() && config.getType().isServer() && !config.getType().isSync())
+                if(context.isPlayingOnRemoteServer() && context.isConfiguredInstalledRemotely() && config.requestFromServerTask().isPresent() && context.isPlayerAnOperator() && context.isDeveloperPlayer())
                 {
-                    if(Services.PLATFORM.isModLoaded(config.getModId()))
-                    {
-                        Component newTitle = ModConfigSelectionScreen.this.title.copy().append(Component.literal(" > ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)).append(this.title);
-                        Minecraft.getInstance().setScreen(new RequestScreen(ModConfigSelectionScreen.this, newTitle, config));
-                    }
+                    Component newTitle = ModConfigSelectionScreen.this.title.copy().append(Component.literal(" > ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)).append(this.title);
+                    Minecraft.getInstance().setScreen(new RequestScreen(ModConfigSelectionScreen.this, newTitle, config));
                     return;
                 }
 
                 // Handle all remaining cases
-                if(Services.PLATFORM.isModLoaded(config.getModId())) // Why did I need to check this?
-                {
-                    Component newTitle = ModConfigSelectionScreen.this.title.copy().append(Component.literal(" > ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)).append(this.title);
-                    Minecraft.getInstance().setScreen(new ConfigScreen(ModConfigSelectionScreen.this, newTitle, config));
-                }
+                Component newTitle = ModConfigSelectionScreen.this.title.copy().append(Component.literal(" > ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)).append(this.title);
+                Minecraft.getInstance().setScreen(new ConfigScreen(ModConfigSelectionScreen.this, newTitle, config));
             });
         }
 
@@ -219,7 +230,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
         {
             if(!ConfigHelper.isPlayingGame())
             {
-                if(ConfigHelper.isWorldConfig(config))
+                if(config.getType().isWorld())
                 {
                     return 11;
                 }
@@ -238,7 +249,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
             }
             else
             {
-                if(config.isReadOnly() && !ConfigHelper.isWorldConfig(config))
+                if(config.isReadOnly() && !config.getType().isWorld())
                 {
                     return 33;
                 }
@@ -248,7 +259,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
 
         private Component getModifyLabel(IModConfig config)
         {
-            if(!ConfigHelper.isPlayingGame() && ConfigHelper.isWorldConfig(config))
+            if(ClientConfigHelper.isMainMenu() && config.getType().isWorld())
             {
                 return Component.translatable("configured.gui.select_world");
             }
@@ -261,10 +272,10 @@ public class ModConfigSelectionScreen extends ListMenuScreen
 
         private Button createRestoreButton(IModConfig config)
         {
-            if(canRestoreConfig(Minecraft.getInstance().player, config))
+            if(ConfigHelper.canRestoreConfig(config, Minecraft.getInstance().player))
             {
                 IconButton restoreButton = new IconButton(0, 0, 0, 0, onPress -> this.showRestoreScreen());
-                restoreButton.active = !config.isReadOnly() && ConfigHelper.hasPermissionToEdit(Minecraft.getInstance().player, config);
+                restoreButton.active = !config.isReadOnly() && config.isChanged();
                 return restoreButton;
             }
             return null;
@@ -298,6 +309,11 @@ public class ModConfigSelectionScreen extends ListMenuScreen
             {
                 ModConfigSelectionScreen.this.setActiveTooltip(Component.translatable("configured.gui.read_only_config"), 0xFF1E6566);
             }
+
+            if(!this.modifyButton.active && this.modifyButton.isHoveredOrFocused())
+            {
+                this.screen.setActiveTooltip(this.modifyTooltip, 0xAADD0000);
+            }
         }
 
         private int getIconU()
@@ -326,7 +342,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
          */
         private void updateRestoreDefaultButton()
         {
-            if(this.config != null && this.restoreButton != null && canRestoreConfig(Minecraft.getInstance().player, this.config))
+            if(this.config != null && this.restoreButton != null && ConfigHelper.canRestoreConfig(this.config, Minecraft.getInstance().player))
             {
                 this.restoreButton.active = !this.config.isReadOnly() && this.config.isChanged();
             }
@@ -354,36 +370,8 @@ public class ModConfigSelectionScreen extends ListMenuScreen
         return fileName;
     }
 
-    public static boolean canEditConfig(@Nullable Player player, IModConfig config)
+    public static boolean isRunningUnpublishedLan()
     {
-        return switch(config.getType())
-        {
-            case CLIENT -> Services.PLATFORM.getEnvironment() == Environment.CLIENT;
-            case UNIVERSAL, MEMORY -> true;
-            case SERVER, WORLD, SERVER_SYNC, WORLD_SYNC -> !ConfigHelper.isPlayingGame() || isRunningLocalServer() || ConfigHelper.isOperator(player) && SessionData.isDeveloper(player);
-            case DEDICATED_SERVER -> false;
-        };
-    }
-
-    public static boolean canRestoreConfig(Player player, IModConfig config)
-    {
-        return switch(config.getType())
-        {
-            case CLIENT, UNIVERSAL, MEMORY -> true;
-            case SERVER, SERVER_SYNC -> !ConfigHelper.isPlayingGame() || isRunningLocalServer();
-            case WORLD, WORLD_SYNC -> isRunningLocalServer();
-            case DEDICATED_SERVER -> false;
-        };
-    }
-
-    public static boolean isRunningLocalServer()
-    {
-        return Minecraft.getInstance().hasSingleplayerServer();
-    }
-
-    public static boolean isPlayingRemotely()
-    {
-        ClientPacketListener listener = Minecraft.getInstance().getConnection();
-        return listener != null && !listener.getConnection().isMemoryConnection();
+        return Minecraft.getInstance().getSingleplayerServer() != null && !Minecraft.getInstance().getSingleplayerServer().isPublished();
     }
 }

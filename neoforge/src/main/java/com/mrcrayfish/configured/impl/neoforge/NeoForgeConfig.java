@@ -1,21 +1,23 @@
 package com.mrcrayfish.configured.impl.neoforge;
 
 import com.electronwill.nightconfig.core.CommentedConfig;
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import com.electronwill.nightconfig.core.Config;
+import com.electronwill.nightconfig.core.concurrent.SynchronizedConfig;
 import com.electronwill.nightconfig.toml.TomlFormat;
 import com.mrcrayfish.configured.Constants;
 import com.mrcrayfish.configured.api.ConfigType;
+import com.mrcrayfish.configured.api.ExecutionContext;
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
-import com.mrcrayfish.configured.client.SessionData;
+import com.mrcrayfish.configured.client.ClientSessionData;
 import com.mrcrayfish.configured.network.payload.SyncNeoForgeConfigPayload;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import com.mrcrayfish.configured.util.NeoForgeConfigHelper;
 import net.minecraft.Util;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.fml.config.ConfigFileTypeHandler;
-import net.neoforged.fml.config.IConfigEvent;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -24,10 +26,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class NeoForgeConfig implements IModConfig
 {
@@ -54,21 +57,24 @@ public class NeoForgeConfig implements IModConfig
     }
 
     @Override
-    public void update(IConfigEntry entry)
+    public ActionResult update(IConfigEntry entry)
     {
+        CommentedConfig origConfig = NeoForgeConfigHelper.getConfigData(this.config);
+        if(origConfig == null)
+        {
+            Constants.LOG.error("Unable to update config '{}' as it is not loaded", this.config.getFileName());
+            return ActionResult.fail(Component.translatable("configured.gui.update_error.unloaded"));
+        }
+
         Set<IConfigValue<?>> changedValues = ConfigHelper.getChangedValues(entry);
         if(!changedValues.isEmpty())
         {
-            CommentedConfig newConfig = CommentedConfig.copy(this.config.getConfigData());
-            changedValues.forEach(value ->
-            {
-                if(value instanceof NeoForgeValue<?> forge)
-                {
-                    if(forge instanceof NeoForgeListValue<?> forgeList)
-                    {
+            SynchronizedConfig newConfig = new SynchronizedConfig(TomlFormat.instance(), LinkedHashMap::new);
+            changedValues.forEach(value -> {
+                if(value instanceof NeoForgeValue<?> forge) {
+                    if(forge instanceof NeoForgeListValue<?> forgeList) {
                         List<?> converted = forgeList.getConverted();
-                        if(converted != null)
-                        {
+                        if(converted != null) {
                             newConfig.set(forge.configValue.getPath(), converted);
                             return;
                         }
@@ -76,32 +82,34 @@ public class NeoForgeConfig implements IModConfig
                     newConfig.set(forge.configValue.getPath(), value.get());
                 }
             });
-            this.config.getConfigData().putAll(newConfig);
+            origConfig.putAll(newConfig);
+            NeoForgeConfigHelper.correctConfig(this.config, origConfig);
         }
 
-        if(this.getType() == ConfigType.WORLD_SYNC)
+        if(this.getType() == ConfigType.WORLD_SYNC && !ConfigHelper.isSingleplayer())
         {
             if(!ConfigHelper.isPlayingGame())
             {
                 // Unload server configs since still in main menu
-                NeoForgeConfigHelper.unload(this.config);
+                NeoForgeConfigHelper.saveConfig(this.config);
+                NeoForgeConfigHelper.closeConfig(this.config);
             }
             else
             {
                 this.syncToServer();
             }
-
         }
         else if(!changedValues.isEmpty())
         {
-            Constants.LOG.info("Sending config reloading event for {}", this.config.getFileName());
-            this.config.getSpec().afterReload();
-            IConfigEvent.reloading(this.config).post();
+            Constants.LOG.info("Saving config and sending reloading event for {}", this.config.getFileName());
+            NeoForgeConfigHelper.resetConfigCache(this.config);
+            NeoForgeConfigHelper.saveConfig(this.config); // NeoForge saving method also sends reload event
         }
+        return ActionResult.success();
     }
 
     @Override
-    public IConfigEntry getRoot()
+    public IConfigEntry createRootEntry()
     {
         return new NeoForgeFolderEntry(((ModConfigSpec) this.config.getSpec()).getValues(), (ModConfigSpec) this.config.getSpec());
     }
@@ -125,23 +133,37 @@ public class NeoForgeConfig implements IModConfig
     }
 
     @Override
-    public void loadWorldConfig(Path path, Consumer<IModConfig> result)
+    public ActionResult loadWorldConfig(Path path)
     {
-        final CommentedFileConfig data = ConfigFileTypeHandler.TOML.reader(path).apply(this.config);
-        NeoForgeConfigHelper.setConfigData(this.config, data);
-        result.accept(this);
+        if(this.config.getLoadedConfig() == null)
+        {
+            try
+            {
+                NeoForgeConfigHelper.openConfig(this.config, path);
+                if(this.config.getLoadedConfig() != null)
+                {
+                    return ActionResult.success();
+                }
+                return ActionResult.fail(); // TODO add message
+            }
+            catch(Exception e)
+            {
+                return ActionResult.fail(Component.literal(e.getMessage()));
+            }
+        }
+        return ActionResult.success();
     }
 
     @Override
-    public void stopEditing()
+    public void stopEditing(boolean updated)
     {
         // Attempts to unload the server config if player simply just went back
-        if(this.config != null && this.getType() == ConfigType.WORLD)
+        if(this.config != null && this.getType() == ConfigType.WORLD_SYNC)
         {
             if(!ConfigHelper.isPlayingGame())
             {
                 // Unload server configs since still in main menu
-                NeoForgeConfigHelper.unload(this.config);
+                NeoForgeConfigHelper.closeConfig(this.config);
             }
         }
     }
@@ -149,8 +171,11 @@ public class NeoForgeConfig implements IModConfig
     @Override
     public boolean isChanged()
     {
-        // Block world configs since the path is dynamic
-        if(ConfigHelper.isWorldConfig(this) && this.config.getConfigData() == null)
+        // TODO test
+
+        // Check if config is loaded
+        CommentedConfig data = NeoForgeConfigHelper.getConfigData(this.config);
+        if(data == null)
             return false;
 
         // Check if any config value doesn't equal it's default
@@ -160,24 +185,88 @@ public class NeoForgeConfig implements IModConfig
     }
 
     @Override
-    public void restoreDefaults()
+    public Optional<Runnable> restoreDefaultsTask()
     {
-        // Block world configs since the path is dynamic
-        if(ConfigHelper.isWorldConfig(this) && this.config.getConfigData() == null)
-            return;
+        return Optional.ofNullable(NeoForgeConfigHelper.getConfigData(this.config)).map(data -> () -> {
+            // Creates a copy of the config data then pushes all at once to avoid multiple IO ops
+            CommentedConfig newConfig = CommentedConfig.copy(data);
+            this.allConfigValues.forEach(entry -> newConfig.set(entry.value.getPath(), entry.spec.getDefault()));
+            data.putAll(newConfig);
+            // Finally clear cache of all config values
+            this.allConfigValues.forEach(pair -> pair.value.clearCache());
+        });
+    }
 
-        // Creates a copy of the config data then pushes all at once to avoid multiple IO ops
-        CommentedConfig newConfig = CommentedConfig.copy(this.config.getConfigData());
-        this.allConfigValues.forEach(entry -> newConfig.set(entry.value.getPath(), entry.spec.getDefault()));
-        this.config.getConfigData().putAll(newConfig);
+    @Override
+    public ActionResult canPlayerEdit(Player player)
+    {
+        ExecutionContext context = new ExecutionContext(player);
+        if(context.isClient())
+        {
+            return switch(this.config.getType()) {
+                case CLIENT, COMMON, STARTUP -> ActionResult.success();
+                case SERVER -> {
+                    if(context.isMainMenu() || context.isSingleplayer()) {
+                        yield ActionResult.success();
+                    }
+                    if(context.isPlayingOnLan()) {
+                        if(context.isIntegratedServerOwnedByPlayer()) {
+                            yield ActionResult.fail(Component.translatable("configured.gui.no_editing_published_lan_server"));
+                        } else {
+                            yield ActionResult.fail(Component.translatable("configured.gui.lan_server"));
+                        }
+                    }
+                    if(context.isPlayingOnRemoteServer()) {
+                        if(context.isPlayerAnOperator() && context.isDeveloperPlayer()) {
+                            yield ActionResult.success();
+                        } else {
+                            yield ActionResult.fail(Component.translatable("configured.gui.no_developer_status"));
+                        }
+                    }
+                    yield ActionResult.fail();
+                }
+            };
+        }
+        else if(context.isDedicatedServer())
+        {
+            return switch(this.config.getType()) {
+                case CLIENT, COMMON, STARTUP -> ActionResult.fail();
+                case SERVER -> {
+                    if(context.isPlayerAnOperator() && context.isDeveloperPlayer()) {
+                        yield ActionResult.success();
+                    }
+                    yield ActionResult.fail();
+                }
+            };
+        }
+        return ActionResult.fail();
+    }
 
-        // Finally clear cache of all config values
-        this.allConfigValues.forEach(pair -> pair.value.clearCache());
+    @Override
+    public ActionResult showSaveConfirmation(Player player)
+    {
+        ExecutionContext context = new ExecutionContext(player);
+        if(context.isClient() && context.isPlayingOnRemoteServer())
+        {
+            if(this.config.getType() == ModConfig.Type.SERVER)
+            {
+                return ActionResult.success(Component.translatable("configured.gui.neoforge.players_kicked"));
+            }
+        }
+        return ActionResult.fail();
     }
 
     private void syncToServer()
     {
         if(this.config == null)
+            return;
+
+        CommentedConfig data = NeoForgeConfigHelper.getConfigData(this.config);
+        if(data == null)
+            return;
+
+        // Don't need to sync since singleplayer
+        if(ConfigHelper.isSingleplayer() || ConfigHelper.isPlayingLan())
             return;
 
         if(!ConfigHelper.isPlayingGame())
@@ -189,15 +278,15 @@ public class NeoForgeConfig implements IModConfig
         if(this.getType() != ConfigType.WORLD_SYNC) // Forge only supports this type
             return;
 
-        // Checked on server too
+        // This is checked on server too
         Player player = ConfigHelper.getClientPlayer();
-        if(!ConfigHelper.isOperator(player) || !SessionData.isDeveloper(player))
+        if(!ConfigHelper.isOperator(player) || !ClientSessionData.isDeveloper())
             return;
 
         try
         {
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            TomlFormat.instance().createWriter().write(this.config.getConfigData(), stream);
+            TomlFormat.instance().createWriter().write(data, stream);
             PacketDistributor.sendToServer(new SyncNeoForgeConfigPayload(this.config.getFileName(), stream.toByteArray()));
             stream.close();
         }

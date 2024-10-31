@@ -130,13 +130,13 @@ public class NeoForgeValue<T> implements IConfigValue<T>
     @Override
     public boolean requiresWorldRestart()
     {
-        return this.valueSpec.needsWorldRestart();
+        return this.valueSpec.restartType() == ModConfigSpec.RestartType.WORLD;
     }
 
     @Override
     public boolean requiresGameRestart()
     {
-        return false;
+        return this.valueSpec.restartType() == ModConfigSpec.RestartType.GAME;
     }
 
     /**

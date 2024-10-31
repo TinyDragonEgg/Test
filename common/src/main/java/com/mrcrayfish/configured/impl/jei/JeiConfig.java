@@ -1,15 +1,16 @@
 package com.mrcrayfish.configured.impl.jei;
 
 import com.mrcrayfish.configured.api.ConfigType;
+import com.mrcrayfish.configured.api.ExecutionContext;
 import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IModConfig;
+import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import mezz.jei.api.runtime.config.IJeiConfigCategory;
 import mezz.jei.api.runtime.config.IJeiConfigFile;
+import net.minecraft.world.entity.player.Player;
 
-import java.nio.file.Path;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Author: MrCrayfish
@@ -27,22 +28,6 @@ public class JeiConfig implements IModConfig
         this.type = type;
         this.categories = configFile.getCategories();
         this.configFile = configFile;
-    }
-
-    @Override
-    public void update(IConfigEntry entry)
-    {
-        ConfigHelper.getChangedValues(entry)
-                .stream()
-                .filter(JeiValue.class::isInstance)
-                .map(JeiValue.class::cast)
-                .forEach(JeiValue::updateConfigValue);
-    }
-
-    @Override
-    public IConfigEntry getRoot()
-    {
-        return new JeiCategoryListEntry(this.name, this.categories);
     }
 
     @Override
@@ -64,5 +49,31 @@ public class JeiConfig implements IModConfig
     }
 
     @Override
-    public void loadWorldConfig(Path path, Consumer<IModConfig> result) {}
+    public IConfigEntry createRootEntry()
+    {
+        return new JeiCategoryListEntry(this.name, this.categories);
+    }
+
+    @Override
+    public ActionResult update(IConfigEntry entry)
+    {
+        ConfigHelper.getChangedValues(entry)
+            .stream()
+            .filter(JeiValue.class::isInstance)
+            .map(JeiValue.class::cast)
+            .forEach(JeiValue::updateConfigValue);
+        return ActionResult.success();
+    }
+
+    @Override
+    public ActionResult canPlayerEdit(Player player)
+    {
+        // TODO check this
+        ExecutionContext context = new ExecutionContext(player);
+        if(context.isClient())
+        {
+            return ActionResult.success();
+        }
+        return ActionResult.fail();
+    }
 }

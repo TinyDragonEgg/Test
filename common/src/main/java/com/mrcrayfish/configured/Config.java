@@ -69,7 +69,8 @@ public class Config
         # with players you don't trust. Even if this mode is enabled, you will still
         # need to authorise players who have access to editing remote configs by
         # listing them in the developers property below and they must also have
-        # operator privileges.
+        # operator privileges. Only config systems that support remote editing will
+        # be able to be edited.
         # Possible values: true, false
         developerMode=false
         

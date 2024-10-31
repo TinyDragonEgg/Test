@@ -9,4 +9,9 @@ public interface IListConfigValue<T> extends IConfigValue<List<T>>
 {
     @Nullable
     IListType<T> getListType();
+
+    default String createPropertyValue()
+    {
+        return "";
+    }
 }

@@ -1,16 +1,16 @@
 package com.mrcrayfish.configured.util;
 
 import com.google.common.collect.ImmutableList;
-import com.mrcrayfish.configured.api.ConfigType;
+import com.mrcrayfish.configured.Config;
 import com.mrcrayfish.configured.api.Environment;
 import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
 import com.mrcrayfish.configured.client.ClientConfigHelper;
+import com.mrcrayfish.configured.client.ClientSessionData;
 import com.mrcrayfish.configured.platform.Services;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.commands.Commands;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,21 +72,18 @@ public class ConfigHelper
     	}
     }
 
-    public static boolean isWorldConfig(IModConfig config)
-    {
-        return config.getType() == ConfigType.WORLD || config.getType() == ConfigType.WORLD_SYNC;
-    }
-
     public static boolean isServerConfig(IModConfig config)
     {
-        return config.getType().isServer() && !isWorldConfig(config);
+        return config.getType().isServer(); // TODO && !isWorldConfig(config);
     }
 
-    /* Client only */
     public static boolean isConfiguredInstalledOnServer()
     {
-        ClientPacketListener listener = Minecraft.getInstance().getConnection();
-        return listener != null && Services.PLATFORM.isConnectionActive(listener);
+        if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+        {
+            return true;
+        }
+        return ClientConfigHelper.isConfiguredInstalledRemotely();
     }
 
     /**
@@ -118,7 +115,6 @@ public class ConfigHelper
         return changed;
     }
 
-    // Client only
     public static boolean isPlayingGame()
     {
         if(Services.PLATFORM.getEnvironment() != Environment.CLIENT)
@@ -127,19 +123,34 @@ public class ConfigHelper
         return ClientConfigHelper.isPlayingGame();
     }
 
-    public static boolean isServerOwnedByPlayer(@Nullable Player player)
+    public static boolean isPlayingLan()
     {
-        return player != null && player.getServer() != null && !player.getServer().isDedicatedServer() && player.getServer().isSingleplayerOwner(player.getGameProfile());
+        if(Services.PLATFORM.getEnvironment() != Environment.CLIENT)
+            return false;
+
+        return ClientConfigHelper.isLan() || !isIntegratedServer() && ClientSessionData.isLan();
     }
 
-    public static boolean hasPermissionToEdit(@Nullable Player player, IModConfig config)
+    public static boolean isSingleplayer()
     {
-        return !config.getType().isServer() || player != null && (player.hasPermissions(4) || isServerOwnedByPlayer(player));
+        if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+            return false;
+
+        return ClientConfigHelper.isSingleplayer();
+    }
+
+    public static boolean isServerOwnedByPlayer(@Nullable Player player)
+    {
+        if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+        {
+            return player != null && player.getServer() != null && !player.getServer().isDedicatedServer() && player.getServer().isSingleplayerOwner(player.getGameProfile());
+        }
+        return ClientConfigHelper.isServerOwnedByPlayer(player);
     }
 
     public static boolean isOperator(@Nullable Player player)
     {
-        return player != null && player.hasPermissions(4);
+        return player != null && player.hasPermissions(Commands.LEVEL_OWNERS);
     }
 
     public static Player getClientPlayer()
@@ -150,11 +161,34 @@ public class ConfigHelper
         return ClientConfigHelper.getClientPlayer();
     }
 
-    public static boolean isRunningLocalServer()
+    public static boolean isIntegratedServer()
     {
         if(Services.PLATFORM.getEnvironment() != Environment.CLIENT)
             return false;
 
-        return ClientConfigHelper.isRunningLocalServer();
+        return ClientConfigHelper.isIntegratedServer();
+    }
+
+    public static boolean isDeveloper(Player player)
+    {
+        if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+        {
+            return Config.isDeveloperEnabled() && Config.getDevelopers().contains(player.getUUID());
+        }
+        return player.isLocalPlayer() && ClientSessionData.isDeveloper() || isServerOwnedByPlayer(player);
+    }
+
+    public static boolean isPlayingOnRemoteServer()
+    {
+        if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+        {
+            return true;
+        }
+        return ClientConfigHelper.isPlayingRemotely();
+    }
+
+    public static boolean canRestoreConfig(IModConfig config, Player player)
+    {
+        return config.restoreDefaultsTask().isPresent() && config.canPlayerEdit(player).asBoolean();
     }
 }

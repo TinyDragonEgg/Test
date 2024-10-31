@@ -5,9 +5,10 @@ import com.mrcrayfish.configured.api.IModConfigProvider;
 import com.mrcrayfish.configured.api.ModContext;
 import net.neoforged.fml.config.ConfigTracker;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.util.ObfuscationReflectionHelper;
+import net.neoforged.fml.config.ModConfigs;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.lang.reflect.Field;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -33,7 +34,7 @@ public class NeoForgeConfigProvider implements IModConfigProvider
 
     private static void addForgeConfigSetToMap(ModContext context, ModConfig.Type type, Consumer<IModConfig> consumer)
     {
-        Set<ModConfig> configSet = ConfigTracker.INSTANCE.configSets().get(type);
+        Set<ModConfig> configSet = ModConfigs.getConfigSet(type);
         Set<IModConfig> filteredConfigSets = configSet.stream()
                 .filter(config -> config.getModId().equals(context.modId()) && config.getSpec() instanceof ModConfigSpec)
                 .map(NeoForgeConfig::new)

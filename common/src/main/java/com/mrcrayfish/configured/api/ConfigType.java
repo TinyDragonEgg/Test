@@ -115,4 +115,9 @@ public enum ConfigType
     {
         return this.sync;
     }
+
+    public boolean isWorld()
+    {
+        return this == WORLD || this == WORLD_SYNC;
+    }
 }

@@ -1,10 +1,12 @@
 package com.mrcrayfish.configured.api;
 
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.function.Consumer;
+import java.util.Optional;
 
 /**
  * @author Speiger
@@ -14,23 +16,6 @@ import java.util.function.Consumer;
  */
 public interface IModConfig
 {
-    /**
-     * This function expects you to do everything necessary to save the config.
-     * If you want an example, see implements in the impl package.
-     *
-     * @param entry the entry that is used or should be checked for updates.
-     *              Also make sure to check children if children of said entry have been changed too.
-     */
-    void update(IConfigEntry entry);
-
-    /**
-     * This function returns provides the Entry point of the Configuration File.
-     * So users can traverse through it.
-     *
-     * @return the root node.
-     */
-    IConfigEntry getRoot();
-
     /**
      * The storage type of this config. This determines where the configuration is loaded from and saved to.
      *
@@ -66,14 +51,21 @@ public interface IModConfig
     }
 
     /**
-     * A Helper function that allows to load the config from the server into the config instance.
-     * Since this is highly dynamic it has to be done on a per implementation basis.
+     * This function returns provides the Entry point of the Configuration File.
+     * So users can traverse through it.
      *
-     * @param path   to the expected config folder.
-     * @param result send self if self got updated. if nothing got updated dont push anything into the result
-     * @throws IOException since its IO work the function will be expected to maybe throw IOExceptions
+     * @return the root node.
      */
-    void loadWorldConfig(Path path, Consumer<IModConfig> result) throws IOException;
+    IConfigEntry createRootEntry();
+
+    /**
+     * This function expects you to do everything necessary to save the config.
+     * If you want an example, see implements in the impl package.
+     *
+     * @param entry the entry that is used or should be checked for updates.
+     *              Also make sure to check children if children of said entry have been changed too.
+     */
+    ActionResult update(IConfigEntry entry);
 
     /**
      * A simple utility function to determine if this config has been changed, as in differs from its
@@ -89,13 +81,6 @@ public interface IModConfig
     }
 
     /**
-     * Restores the entire config to its default values. If the config is read only, it will simply
-     * be ignored. Implementations of this method should ensure that the config is loaded before
-     * performing a restore, otherwise just return.
-     */
-    default void restoreDefaults() {}
-
-    /**
      * An event that is fired when this config is starting to be edited by the player using the
      * in-game menu. This is only fired once during the initial opening of the config.
      */
@@ -103,14 +88,73 @@ public interface IModConfig
 
     /**
      * An event that is fired when this config is no longer being edited by the player using the
-     * in-game menu. This is only fired once after the player has exited the menu.
+     * in-game menu. This is only fired once after the player has exited the menu. The changed
+     * parameter indicates that updates were performed to the config during editing and were saved.
+     * This method should be used for
+     *
+     * @param updated True if the config was updated during editing
      */
-    default void stopEditing() {}
+    default void stopEditing(boolean updated) {}
 
     /**
-     * Sends a request to the server to download the data for this config. This is only applicable
-     * to configs that are only loaded on the server side. The data must be returned to request
-     * screen.
+     * A Helper function that allows to load the config from the server into the config instance.
+     * Since this is highly dynamic it has to be done on a per implementation basis.
+     *
+     * @param path to the expected config folder.
+     * @throws IOException since its IO work the function will be expected to maybe throw IOExceptions
      */
-    default void requestFromServer() {}
+    default ActionResult loadWorldConfig(Path path) throws IOException
+    {
+        return ActionResult.fail();
+    }
+
+    /**
+     * Provides an optional runnable, that when executed, restores the entire config to its default
+     * values. An empty optional indicates that the config cannot be restored and the functionality
+     * will be disabled in the user interface. Players that do not have permission to edit the config,
+     * according to {@link #canPlayerEdit(Player)}, will not be able to run the restore task.
+     *
+     * @return An optional runnable that restores the config to its default values.
+     */
+    default Optional<Runnable> restoreDefaultsTask()
+    {
+        return Optional.empty();
+    }
+
+    /**
+     * Creates a task that sends a request to the server to download the data for this config. This
+     * is only applicable to configs that are not available on the client. The runnable should
+     * simply send a packet to the server, authorise, then send back to the client the data.
+     *
+     * @return An optional runnable. If the optional is empty, this indicates the config cannot be
+     * requested
+     */
+    default Optional<Runnable> requestFromServerTask()
+    {
+        return Optional.empty();
+    }
+
+    /**
+     * Allows you to provide additional rules on whether the
+     *
+     * @param player the instance of the player
+     * @return A query result containing the editing permissions
+     */
+    default ActionResult canPlayerEdit(Player player)
+    {
+        return ActionResult.fail();
+    }
+
+    /**
+     * Shows a custom confirmation screen just before saving. This can be used to warn the player
+     * of an impending action once the config is saved. To show the confirmation screen, the
+     * returned {@link ActionResult} must be successful and include a message. Use the helper
+     * method {@link ActionResult#success(Component)} to create the correct return result.
+     *
+     * @return A successful action result with a message or fail to show nothing
+     */
+    default ActionResult showSaveConfirmation(Player player)
+    {
+        return ActionResult.fail();
+    }
 }
