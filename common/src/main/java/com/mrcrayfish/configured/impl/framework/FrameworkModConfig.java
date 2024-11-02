@@ -95,7 +95,7 @@ public class FrameworkModConfig implements IModConfig
             if(!ConfigHelper.isPlayingGame())
             {
                 // Unload world configs since still in main menu
-                this.config.unload(false); // TODO figure this out
+                this.config.unload(false);
                 return ActionResult.success();
             }
 

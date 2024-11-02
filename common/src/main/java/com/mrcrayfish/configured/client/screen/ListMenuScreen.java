@@ -112,7 +112,7 @@ public abstract class ListMenuScreen extends TooltipScreen
         this.resetTooltip();
 
         // Draws the background texture (dirt or custom texture)
-        super.render(graphics, mouseX, mouseY, partialTicks); // TODO check
+        super.render(graphics, mouseX, mouseY, partialTicks);
 
         // Draws widgets manually since they are not buttons
         this.list.render(graphics, mouseX, mouseY, partialTicks);
