@@ -147,7 +147,7 @@ public class FrameworkModConfig implements IModConfig
             {
                 return ActionResult.success();
             }
-            return ActionResult.fail(Component.literal("Failed to load Framework world config"));
+            return ActionResult.fail(Component.translatable("configured.gui.load_world_config_failed"));
         }
         return ActionResult.success();
     }
