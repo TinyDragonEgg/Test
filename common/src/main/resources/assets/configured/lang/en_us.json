@@ -49,7 +49,7 @@
     "configured.gui.title.other_worlds": "Other Worlds",
     "configured.gui.requesting_config": "Loading config",
     "configured.gui.failed_request": "Failed to load config",
-    "configured.gui.load_world_config_failed": "The world config failed to load",
+    "configured.gui.load_world_config_failed": "The config failed to load for this world",
     "configured.gui.load_world_config_exception": "An error occurred when trying to load the config for this world. See the logs for details",
     "configured.gui.update_error.generic": "Failed to update the config",
     "configured.gui.update_error.read_only": "Failed to update the config as it is read-only",
