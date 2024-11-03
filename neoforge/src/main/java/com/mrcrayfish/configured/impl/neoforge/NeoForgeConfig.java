@@ -184,6 +184,9 @@ public class NeoForgeConfig implements IModConfig
     @Override
     public Optional<Runnable> restoreDefaultsTask()
     {
+        if(this.config.getType() == ModConfig.Type.SERVER && ConfigHelper.isPlayingOnRemoteServer())
+            return Optional.empty();
+
         return Optional.ofNullable(NeoForgeConfigHelper.getConfigData(this.config)).map(data -> () -> {
             // Creates a copy of the config data then pushes all at once to avoid multiple IO ops
             CommentedConfig newConfig = CommentedConfig.copy(data);

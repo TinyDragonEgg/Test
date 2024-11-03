@@ -181,6 +181,10 @@ public class ForgeConfig implements IModConfig
         if(this.getType().isWorld() && this.config.getConfigData() == null)
             return Optional.empty();
 
+        // Block restoring server config
+        if(this.config.getType() == ModConfig.Type.SERVER && ConfigHelper.isPlayingOnRemoteServer())
+            return Optional.empty();
+
         return Optional.of(() -> {
             // Creates a copy of the config data then pushes all at once to avoid multiple IO ops
             CommentedConfig newConfig = CommentedConfig.copy(this.config.getConfigData());

@@ -175,6 +175,9 @@ public class FrameworkModConfig implements IModConfig
         if(FrameworkConfigHelper.isWorldType(this.config) && !this.config.isLoaded())
             return Optional.empty();
 
+        if(this.config.getType().isServer() && ConfigHelper.isPlayingOnRemoteServer())
+            return Optional.empty();
+
         return Optional.of(this.config::restoreDefaults);
     }
 
