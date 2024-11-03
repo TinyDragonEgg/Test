@@ -18,7 +18,8 @@ public class ClientConfigHelper
 
     public static boolean isPlayingGame()
     {
-        return Minecraft.getInstance().level != null;
+        Minecraft minecraft = Minecraft.getInstance();
+        return minecraft.player != null || minecraft.level != null;
     }
 
     public static Player getClientPlayer()
