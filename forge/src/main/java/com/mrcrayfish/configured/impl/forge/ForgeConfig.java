@@ -241,6 +241,20 @@ public class ForgeConfig implements IModConfig
         return ActionResult.fail();
     }
 
+    @Override
+    public ActionResult showSaveConfirmation(Player player)
+    {
+        ExecutionContext context = new ExecutionContext(player);
+        if(context.isClient() && context.isPlayingOnRemoteServer())
+        {
+            if(this.config.getType() == ModConfig.Type.SERVER)
+            {
+                return ActionResult.success(Component.translatable("configured.gui.neoforge.players_kicked"));
+            }
+        }
+        return ActionResult.fail();
+    }
+
     private void syncToServer()
     {
         if(this.config == null)

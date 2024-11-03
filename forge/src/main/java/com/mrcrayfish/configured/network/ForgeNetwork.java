@@ -48,7 +48,7 @@ public class ForgeNetwork
                     ctx.setPacketHandled(true);
                 });
             });
-            protocol.bidirectional(flow -> {
+            protocol.serverbound(flow -> {
                 flow.add(MessageSyncForgeConfig.class, MessageSyncForgeConfig.STREAM_CODEC, MessageSyncForgeConfig::handle);
             });
         });
