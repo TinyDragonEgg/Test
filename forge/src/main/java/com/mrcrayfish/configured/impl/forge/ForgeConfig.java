@@ -6,6 +6,7 @@ import com.electronwill.nightconfig.toml.TomlFormat;
 import com.mrcrayfish.configured.Constants;
 import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.api.ConfigType;
+import com.mrcrayfish.configured.api.ExecutionContext;
 import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
@@ -21,6 +22,7 @@ import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -187,6 +189,56 @@ public class ForgeConfig implements IModConfig
             // Finally clear cache of all config values
             this.allConfigValues.forEach(pair -> pair.value.clearCache());
         });
+    }
+
+    @Override
+    public ActionResult canPlayerEdit(@Nullable Player player)
+    {
+        ExecutionContext context = new ExecutionContext(player);
+        if(context.isClient())
+        {
+            return switch(this.config.getType()) {
+                case CLIENT, COMMON -> {
+                    if(context.isMainMenu() || context.isLocalPlayer()) {
+                        yield ActionResult.success();
+                    }
+                    yield ActionResult.fail();
+                }
+                case SERVER -> {
+                    if(context.isMainMenu() || context.isSingleplayer()) {
+                        yield ActionResult.success();
+                    }
+                    if(context.isPlayingOnLan()) {
+                        if(context.isIntegratedServerOwnedByPlayer()) {
+                            yield ActionResult.fail(Component.translatable("configured.gui.no_editing_published_lan_server"));
+                        } else {
+                            yield ActionResult.fail(Component.translatable("configured.gui.lan_server"));
+                        }
+                    }
+                    if(context.isPlayingOnRemoteServer()) {
+                        if(context.isPlayerAnOperator() && context.isDeveloperPlayer()) {
+                            yield ActionResult.success();
+                        } else {
+                            yield ActionResult.fail(Component.translatable("configured.gui.no_developer_status"));
+                        }
+                    }
+                    yield ActionResult.fail();
+                }
+            };
+        }
+        else if(context.isDedicatedServer())
+        {
+            return switch(this.config.getType()) {
+                case CLIENT, COMMON -> ActionResult.fail();
+                case SERVER -> {
+                    if(context.isPlayerAnOperator() && context.isDeveloperPlayer()) {
+                        yield ActionResult.success();
+                    }
+                    yield ActionResult.fail();
+                }
+            };
+        }
+        return ActionResult.fail();
     }
 
     private void syncToServer()
