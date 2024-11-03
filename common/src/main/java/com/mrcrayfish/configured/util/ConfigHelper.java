@@ -10,6 +10,7 @@ import com.mrcrayfish.configured.client.ClientConfigHelper;
 import com.mrcrayfish.configured.client.ClientSessionData;
 import com.mrcrayfish.configured.platform.Services;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
@@ -152,8 +153,12 @@ public class ConfigHelper
     {
         if(player != null)
         {
-            MinecraftServer server = player.getServer();
-            return server != null && server.getPlayerList().isOp(player.getGameProfile());
+            if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+            {
+                MinecraftServer server = player.getServer();
+                return server != null && server.getPlayerList().isOp(player.getGameProfile());
+            }
+            return player.hasPermissions(Commands.LEVEL_OWNERS);
         }
         return false;
     }
