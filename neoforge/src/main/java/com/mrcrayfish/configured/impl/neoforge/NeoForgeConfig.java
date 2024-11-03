@@ -4,6 +4,7 @@ import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.core.concurrent.SynchronizedConfig;
 import com.electronwill.nightconfig.toml.TomlFormat;
+import com.google.common.base.Suppliers;
 import com.mrcrayfish.configured.Constants;
 import com.mrcrayfish.configured.api.ConfigType;
 import com.mrcrayfish.configured.api.ExecutionContext;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public class NeoForgeConfig implements IModConfig
 {
@@ -42,18 +44,12 @@ public class NeoForgeConfig implements IModConfig
     });
 
     protected final ModConfig config;
-    protected final List<ForgeValueEntry> allConfigValues;
+    protected final Supplier<List<ForgeValueEntry>> allConfigValues;
 
     public NeoForgeConfig(ModConfig config)
     {
         this.config = config;
-        this.allConfigValues = getAllConfigValues(config);
-    }
-
-    protected NeoForgeConfig(ModConfig config, List<ForgeValueEntry> allConfigValues)
-    {
-        this.config = config;
-        this.allConfigValues = allConfigValues;
+        this.allConfigValues = Suppliers.memoize(() -> this.getAllConfigValues(config));
     }
 
     @Override
@@ -179,7 +175,7 @@ public class NeoForgeConfig implements IModConfig
             return false;
 
         // Check if any config value doesn't equal it's default
-        return this.allConfigValues.stream().anyMatch(entry -> {
+        return this.allConfigValues.get().stream().anyMatch(entry -> {
             return !Objects.equals(entry.value.get(), entry.spec.getDefault());
         });
     }
@@ -190,10 +186,10 @@ public class NeoForgeConfig implements IModConfig
         return Optional.ofNullable(NeoForgeConfigHelper.getConfigData(this.config)).map(data -> () -> {
             // Creates a copy of the config data then pushes all at once to avoid multiple IO ops
             CommentedConfig newConfig = CommentedConfig.copy(data);
-            this.allConfigValues.forEach(entry -> newConfig.set(entry.value.getPath(), entry.spec.getDefault()));
+            this.allConfigValues.get().forEach(entry -> newConfig.set(entry.value.getPath(), entry.spec.getDefault()));
             data.putAll(newConfig);
             // Finally clear cache of all config values
-            this.allConfigValues.forEach(pair -> pair.value.clearCache());
+            this.allConfigValues.get().forEach(pair -> pair.value.clearCache());
         });
     }
 
