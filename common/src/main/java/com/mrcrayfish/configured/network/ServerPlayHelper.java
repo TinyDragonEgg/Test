@@ -3,6 +3,7 @@ package com.mrcrayfish.configured.network;
 import com.google.common.base.Preconditions;
 import com.mrcrayfish.configured.Config;
 import com.mrcrayfish.configured.Constants;
+import com.mrcrayfish.configured.api.ExecutionContext;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -29,27 +30,36 @@ public class ServerPlayHelper
 
     public static boolean canEditServerConfigs(ServerPlayer player)
     {
-        // If integrated server and the server is owned by the player, they can edit server configs
-        if(ConfigHelper.isServerOwnedByPlayer(player))
+        ExecutionContext context = new ExecutionContext(player);
+        if(context.isClient())
+        {
+            if(!context.isIntegratedServerOwnedByPlayer())
+            {
+                Constants.LOG.warn("{} tried to request or update a server config, however is not the owner the integrated server", player.getName().getString());
+                player.connection.disconnect(Component.translatable("configured.multiplayer.disconnect.unauthorized_request"));
+                return false;
+            }
+            Constants.LOG.debug("{} was given access to edit server configs as they are the owner of the integrated server", player.getName().getString());
             return true;
-
-        MinecraftServer server = player.getServer();
-        if(server == null || !server.isDedicatedServer() || !Config.isDeveloperEnabled())
-        {
-            Constants.LOG.warn("{} tried to request or update a server config, however developer mode is not enabled", player.getName().getString());
-            player.connection.disconnect(Component.translatable("configured.multiplayer.disconnect.unauthorized_request"));
-            sendMessageToOperators(Component.translatable("configured.chat.authorized_player").withStyle(ChatFormatting.RED), player);
-            return false;
         }
-
-        if(!Config.getDevelopers().contains(player.getUUID()) || !server.getPlayerList().isOp(player.getGameProfile()))
+        else if(context.isDedicatedServer())
         {
-            Constants.LOG.warn("{} tried to request or update a server config, however they are not a developer", player.getName().getString());
-            player.connection.disconnect(Component.translatable("configured.multiplayer.disconnect.unauthorized_request"));
-            sendMessageToOperators(Component.translatable("configured.chat.authorized_player").withStyle(ChatFormatting.RED), player);
-            return false;
+            if(!Config.isDeveloperEnabled())
+            {
+                Constants.LOG.warn("{} tried to request or update a server config, however developer mode is not enabled", player.getName().getString());
+                player.connection.disconnect(Component.translatable("configured.multiplayer.disconnect.unauthorized_request"));
+                sendMessageToOperators(Component.translatable("configured.chat.authorized_player").withStyle(ChatFormatting.RED), player);
+                return false;
+            }
+            if(!context.isPlayerAnOperator() || !context.isDeveloperPlayer())
+            {
+                Constants.LOG.warn("{} tried to request or update a server config, however they are not a developer", player.getName().getString());
+                player.connection.disconnect(Component.translatable("configured.multiplayer.disconnect.unauthorized_request"));
+                sendMessageToOperators(Component.translatable("configured.chat.authorized_player").withStyle(ChatFormatting.RED), player);
+                return false;
+            }
+            return true;
         }
-
-        return true;
+        return false;
     }
 }
