@@ -71,4 +71,9 @@ public record ExecutionContext(@Nullable Player player)
     {
         return ConfigHelper.isConfiguredInstalledOnServer();
     }
+
+    public boolean isLocalPlayer()
+    {
+        return this.player != null && this.player.isLocalPlayer();
+    }
 }
