@@ -8,9 +8,12 @@ import com.mrcrayfish.configured.api.ActionResult;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import mezz.jei.api.runtime.config.IJeiConfigCategory;
 import mezz.jei.api.runtime.config.IJeiConfigFile;
+import mezz.jei.api.runtime.config.IJeiConfigValue;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Author: MrCrayfish
@@ -77,5 +80,30 @@ public class JeiConfig implements IModConfig
             }
         }
         return ActionResult.fail();
+    }
+
+    @Override
+    public boolean isChanged()
+    {
+        return this.categories.stream().anyMatch(category -> {
+            return category.getConfigValues().stream().anyMatch(value -> {
+                return !Objects.equals(value.getValue(), value.getDefaultValue());
+            });
+        });
+    }
+
+    @Override
+    public Optional<Runnable> restoreDefaultsTask()
+    {
+        return Optional.of(() -> {
+            this.categories.forEach(category -> {
+                category.getConfigValues().forEach(JeiConfig::restoreDefaultValue);
+            });
+        });
+    }
+
+    private static <T> void restoreDefaultValue(IJeiConfigValue<T> value)
+    {
+        value.set(value.getDefaultValue());
     }
 }
