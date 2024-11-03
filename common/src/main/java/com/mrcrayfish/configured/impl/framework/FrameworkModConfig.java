@@ -4,6 +4,8 @@ import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.toml.TomlFormat;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
 import com.mrcrayfish.configured.Constants;
 import com.mrcrayfish.configured.api.ConfigType;
@@ -56,12 +58,12 @@ public class FrameworkModConfig implements IModConfig
     });
 
     private final FrameworkConfigManager.FrameworkConfigImpl config;
-    private final PropertyMap map;
+    private final Supplier<PropertyMap> map;
 
     public FrameworkModConfig(FrameworkConfigManager.FrameworkConfigImpl config)
     {
         this.config = config;
-        this.map = new PropertyMap(config);
+        this.map = Suppliers.memoize(() -> new PropertyMap(config));
     }
 
     @Override
@@ -116,7 +118,7 @@ public class FrameworkModConfig implements IModConfig
     @Override
     public IConfigEntry createRootEntry()
     {
-        return new FrameworkFolderEntry(this.map);
+        return new FrameworkFolderEntry(this.map.get());
     }
 
     @Override
