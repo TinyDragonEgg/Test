@@ -201,7 +201,12 @@ public class NeoForgeConfig implements IModConfig
         if(context.isClient())
         {
             return switch(this.config.getType()) {
-                case CLIENT, COMMON, STARTUP -> ActionResult.success();
+                case CLIENT, COMMON, STARTUP -> {
+                    if(context.isMainMenu() || context.isLocalPlayer()) {
+                        yield ActionResult.success();
+                    }
+                    yield ActionResult.fail();
+                }
                 case SERVER -> {
                     if(context.isMainMenu() || context.isSingleplayer()) {
                         yield ActionResult.success();

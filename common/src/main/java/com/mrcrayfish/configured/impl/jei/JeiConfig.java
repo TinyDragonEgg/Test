@@ -68,11 +68,13 @@ public class JeiConfig implements IModConfig
     @Override
     public ActionResult canPlayerEdit(Player player)
     {
-        // TODO check this
         ExecutionContext context = new ExecutionContext(player);
         if(context.isClient())
         {
-            return ActionResult.success();
+            if(context.isMainMenu() || context.isLocalPlayer())
+            {
+                return ActionResult.success();
+            }
         }
         return ActionResult.fail();
     }

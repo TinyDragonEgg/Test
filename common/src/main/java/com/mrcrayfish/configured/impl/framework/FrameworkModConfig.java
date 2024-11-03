@@ -220,7 +220,12 @@ public class FrameworkModConfig implements IModConfig
         {
             return switch(this.getType()) {
                 case DEDICATED_SERVER -> ActionResult.fail();
-                case CLIENT, UNIVERSAL, MEMORY -> ActionResult.success();
+                case CLIENT, UNIVERSAL, MEMORY -> {
+                    if(context.isMainMenu() || context.isLocalPlayer()) {
+                        yield ActionResult.success();
+                    }
+                    yield ActionResult.fail();
+                }
                 case SERVER, WORLD, SERVER_SYNC, WORLD_SYNC -> {
                     if(context.isMainMenu() || context.isSingleplayer()) {
                         yield ActionResult.success();
