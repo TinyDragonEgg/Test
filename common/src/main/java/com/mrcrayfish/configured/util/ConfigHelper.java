@@ -143,7 +143,7 @@ public class ConfigHelper
     {
         if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
         {
-            return player != null && player.getServer() != null && !player.getServer().isDedicatedServer() && player.getServer().isSingleplayerOwner(player.getGameProfile());
+            return false;
         }
         return ClientConfigHelper.isServerOwnedByPlayer(player);
     }
