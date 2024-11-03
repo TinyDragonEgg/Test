@@ -3,13 +3,14 @@ package com.mrcrayfish.configured.api;
 import com.mrcrayfish.configured.platform.Services;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import net.minecraft.world.entity.player.Player;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Helper class for common checks
  *
  * Author: MrCrayfish
  */
-public record ExecutionContext(Player player)
+public record ExecutionContext(@Nullable Player player)
 {
     public boolean isClient()
     {

@@ -213,7 +213,7 @@ public class FrameworkModConfig implements IModConfig
     }
 
     @Override
-    public ActionResult canPlayerEdit(Player player)
+    public ActionResult canPlayerEdit(@Nullable Player player)
     {
         ExecutionContext context = new ExecutionContext(player);
         if(context.isClient())

@@ -135,12 +135,14 @@ public interface IModConfig
     }
 
     /**
-     * Allows you to provide additional rules on whether the
+     * Allows you to provide the rules on whether a player is allowed to edit this config. Note that
+     * the player parameter may be null and this generally indicates the config is being edited from
+     * the main menu.
      *
-     * @param player the instance of the player
+     * @param player the instance of the player or null if in main menu
      * @return A query result containing the editing permissions
      */
-    default ActionResult canPlayerEdit(Player player)
+    default ActionResult canPlayerEdit(@Nullable Player player)
     {
         return ActionResult.fail();
     }

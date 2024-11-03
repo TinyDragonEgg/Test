@@ -174,13 +174,17 @@ public class ConfigHelper
         return ClientConfigHelper.isIntegratedServer();
     }
 
-    public static boolean isDeveloper(Player player)
+    public static boolean isDeveloper(@Nullable Player player)
     {
-        if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+        if(player != null)
         {
-            return Config.isDeveloperEnabled() && Config.getDevelopers().contains(player.getUUID());
+            if(Services.PLATFORM.getEnvironment() == Environment.DEDICATED_SERVER)
+            {
+                return Config.isDeveloperEnabled() && Config.getDevelopers().contains(player.getUUID());
+            }
+            return player.isLocalPlayer() && ClientSessionData.isDeveloper() || isServerOwnedByPlayer(player);
         }
-        return player.isLocalPlayer() && ClientSessionData.isDeveloper() || isServerOwnedByPlayer(player);
+        return false;
     }
 
     public static boolean isPlayingOnRemoteServer()
