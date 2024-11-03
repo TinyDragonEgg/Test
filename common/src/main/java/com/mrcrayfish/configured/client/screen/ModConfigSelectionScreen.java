@@ -180,7 +180,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
          */
         private Button createModifyButton(IModConfig config)
         {
-            int width = ConfigHelper.canRestoreConfig(config, Minecraft.getInstance().player) ? 60 : 82;
+            int width = this.canRestore(config) ? 60 : 82;
             return new IconButton(0, 0, this.getModifyIconU(config), this.getModifyIconV(config), width, this.getModifyLabel(config), button ->
             {
                 // Disable all handling if not active or visible
@@ -270,15 +270,20 @@ public class ModConfigSelectionScreen extends ListMenuScreen
             return Component.translatable("configured.gui.modify");
         }
 
+        private boolean canRestore(IModConfig config)
+        {
+            if(config.getType().isServer() && ConfigHelper.isPlayingOnRemoteServer())
+                return false;
+            return ConfigHelper.canRestoreConfig(config, Minecraft.getInstance().player);
+        }
+
         private Button createRestoreButton(IModConfig config)
         {
-            if(ConfigHelper.canRestoreConfig(config, Minecraft.getInstance().player))
-            {
-                IconButton restoreButton = new IconButton(0, 0, 0, 0, onPress -> this.showRestoreScreen());
-                restoreButton.active = !config.isReadOnly() && config.isChanged();
-                return restoreButton;
-            }
-            return null;
+            if(!this.canRestore(config))
+                return null;
+            IconButton restoreButton = new IconButton(0, 0, 0, 0, onPress -> this.showRestoreScreen());
+            restoreButton.active = !config.isReadOnly() && config.isChanged();
+            return restoreButton;
         }
 
         @Override
