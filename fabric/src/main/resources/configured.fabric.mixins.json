@@ -7,6 +7,9 @@
     "mixins": [
         "PlayerListMixin"
     ],
+    "client": [
+        "GuiGraphicsMixin"
+    ],
     "injectors": {
         "defaultRequire": 1
     }

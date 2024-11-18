@@ -3,7 +3,12 @@ package test;
 import com.mrcrayfish.framework.api.config.BoolProperty;
 import com.mrcrayfish.framework.api.config.ConfigProperty;
 import com.mrcrayfish.framework.api.config.ConfigType;
+import com.mrcrayfish.framework.api.config.EnumProperty;
 import com.mrcrayfish.framework.api.config.FrameworkConfig;
+import com.mrcrayfish.framework.api.config.StringProperty;
+import com.mrcrayfish.framework.api.config.validate.Validator;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 /**
  * Author: MrCrayfish
@@ -59,5 +64,24 @@ public class Config
     {
         @ConfigProperty(name = "test", comment = "Hello", gameRestart = true)
         public final BoolProperty test = BoolProperty.create(false);
+
+        @ConfigProperty(name = "test_string", comment = "Hello", gameRestart = true)
+        public final StringProperty testString = StringProperty.create("Hello", new Validator<String>()
+        {
+            @Override
+            public boolean test(String value)
+            {
+                return value.startsWith("#");
+            }
+
+            @Override
+            public Component getHint()
+            {
+                return Component.literal("String must start with a #");
+            }
+        });
+
+        @ConfigProperty(name = "test_enum", comment = "Hello", gameRestart = true)
+        public final EnumProperty<ChatFormatting> testEnum = EnumProperty.create(ChatFormatting.YELLOW);
     }
 }

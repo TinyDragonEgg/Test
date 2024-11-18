@@ -18,6 +18,13 @@ import java.util.Set;
 public final class ModMenuConfigFactory implements ModMenuApi
 {
     @Override
+    public ConfigScreenFactory<?> getModConfigScreenFactory()
+    {
+        // TODO remove once fixed in ModMenu (https://github.com/TerraformersMC/ModMenu/issues/797)
+        return null;
+    }
+
+    @Override
     public Map<String, ConfigScreenFactory<?>> getProvidedConfigScreenFactories()
     {
         Map<String, ConfigScreenFactory<?>> modConfigFactories = new HashMap<>();

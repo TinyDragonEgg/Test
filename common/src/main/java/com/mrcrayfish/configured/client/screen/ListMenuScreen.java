@@ -20,7 +20,9 @@ import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.CoreShaders;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -125,10 +127,10 @@ public abstract class ListMenuScreen extends TooltipScreen
         this.renderForeground(graphics, mouseX, mouseY, partialTicks);
 
         // Draws the Configured logo in the top left of the screen
-        graphics.blit(CONFIGURED_LOGO, 10, 13, 0, 0, 0, 23, 23, 32, 32);
+        graphics.blit(RenderType::guiTextured, CONFIGURED_LOGO, 10, 13, 0, 0, 23, 23, 32, 32);
 
         // Draws the search icon next to the search text field
-        graphics.blit(IconButton.ICONS, this.width / 2 - 128, 26, 14, 14, 22, 11, 10, 10, 64, 64);
+        graphics.blit(RenderType::guiTextured, IconButton.ICONS, this.width / 2 - 128, 26, 22, 11, 14, 14, 10, 10, 64, 64);
 
         // Gives a chance for child classes to set the active tooltip
         this.updateTooltip(mouseX, mouseY);
@@ -324,7 +326,7 @@ public abstract class ListMenuScreen extends TooltipScreen
                 HoverEvent event = style.getHoverEvent();
                 if(event != null && event.getAction() == HoverEvent.Action.SHOW_TEXT)
                 {
-                    ListMenuScreen.this.setActiveTooltip(event.getValue(HoverEvent.Action.SHOW_TEXT), 0xFFFCA800);
+                    ListMenuScreen.this.setActiveTooltip(event.getValue(HoverEvent.Action.SHOW_TEXT), TooltipStyle.LINK);
                 }
             }
         }
@@ -365,10 +367,10 @@ public abstract class ListMenuScreen extends TooltipScreen
             super.renderWidget(graphics, mouseX, mouseY, partialTick);
             if(this.clearable && !this.getValue().isEmpty())
             {
-                RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+                RenderSystem.setShader(CoreShaders.POSITION_TEX_COLOR);
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, this.alpha); // TODO test alpha
                 boolean hovered = ScreenUtil.isMouseWithin(this.getX() + this.width - 15, this.getY() + 5, 9, 9, mouseX, mouseY);
-                graphics.blit(IconButton.ICONS, this.getX() + this.width - 15, this.getY() + 5, 9, 9, hovered ? 9 : 0, 55, 9, 9, 64, 64);
+                graphics.blit(RenderType::guiTextured, IconButton.ICONS, this.getX() + this.width - 15, this.getY() + 5, hovered ? 9 : 0, 55, 9, 9, 9, 9, 64, 64);
             }
         }
 

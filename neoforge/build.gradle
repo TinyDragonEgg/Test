@@ -2,7 +2,7 @@ import net.neoforged.gradle.common.tasks.PotentiallySignJar
 
 plugins {
     id 'multiloader-loader'
-    id 'net.neoforged.gradle.userdev' version '7.0.142'
+    id 'net.neoforged.gradle.userdev' version '7.0.168'
 }
 
 def at = file('src/main/resources/META-INF/accesstransformer.cfg')
@@ -39,9 +39,10 @@ dependencies {
     implementation "com.mrcrayfish:framework-neoforge:${minecraft_version}-${framework_version}"
 
     // JEI
-    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
-    testCompileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
-    runtimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    // TODO revert back to minecraft property once jei has updated
+    compileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
+    testCompileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
+    //runtimeOnly "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
 }
 
 tasks.register('signJar', PotentiallySignJar) {

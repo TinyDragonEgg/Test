@@ -1,11 +1,12 @@
 package com.mrcrayfish.configured.client.screen;
 
 import com.google.common.collect.ImmutableList;
-import com.mojang.blaze3d.vertex.PoseStack;
+import com.mrcrayfish.configured.Constants;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTextTooltip;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 
@@ -20,7 +21,7 @@ public abstract class TooltipScreen extends Screen
     @Nullable
     public List<FormattedCharSequence> tooltipText;
     @Nullable
-    public Integer tooltipOutlineColour;
+    public TooltipStyle tooltipStyle;
 
     protected TooltipScreen(Component title)
     {
@@ -30,7 +31,7 @@ public abstract class TooltipScreen extends Screen
     protected void resetTooltip()
     {
         this.tooltipText = null;
-        this.tooltipOutlineColour = null;
+        this.tooltipStyle = null;
     }
 
     /**
@@ -65,11 +66,11 @@ public abstract class TooltipScreen extends Screen
      *
      * @param text the text to show on the tooltip
      */
-    public void setActiveTooltip(Component text, int outlineColour)
+    public void setActiveTooltip(Component text, @Nullable TooltipStyle style)
     {
         this.resetTooltip();
         this.tooltipText = this.minecraft.font.split(text, 200);
-        this.tooltipOutlineColour = outlineColour;
+        this.tooltipStyle = style;
     }
 
     protected void drawTooltip(GuiGraphics graphics, int mouseX, int mouseY)
@@ -89,6 +90,26 @@ public abstract class TooltipScreen extends Screen
         public ClientTextTooltip asClientTextTooltip()
         {
             return new ClientTextTooltip(this.text);
+        }
+    }
+
+    public enum TooltipStyle
+    {
+        SUCCESS(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "success")),
+        HINT(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "hint")),
+        ERROR(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "error")),
+        LINK(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "link"));
+
+        private final ResourceLocation texture;
+
+        TooltipStyle(ResourceLocation texture)
+        {
+            this.texture = texture;
+        }
+
+        public ResourceLocation getTexture()
+        {
+            return this.texture;
         }
     }
 }

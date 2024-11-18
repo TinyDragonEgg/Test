@@ -6,6 +6,7 @@ import com.mrcrayfish.configured.client.util.ScreenUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -80,7 +81,7 @@ public class ConfirmationScreen extends Screen
         List<FormattedCharSequence> lines = this.font.split(this.message, 300);
 
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        graphics.blit(IconButton.ICONS, this.width / 2 - 10, this.startY - 30, 20, 20, this.icon.u(), this.icon.v(), 10, 10, 64, 64);
+        graphics.blit(RenderType::guiTextured, IconButton.ICONS, this.width / 2 - 10, this.startY - 30, this.icon.u(), this.icon.v(), 20, 20, 10, 10, 64, 64);
 
         drawListBackground(graphics, 0, this.width, this.startY, this.endY);
 
@@ -88,8 +89,6 @@ public class ConfirmationScreen extends Screen
         {
             int lineWidth = this.font.width(lines.get(i));
             graphics.drawString(this.font, lines.get(i), this.width / 2 - lineWidth / 2, this.startY + MESSAGE_PADDING + i * (this.font.lineHeight + 2) + 1, 0xFFFFFF);
-            // TODO wat dis
-            //this.font.draw(poseStack, lines.get(i), this.width / 2 - lineWidth / 2, this.startY + MESSAGE_PADDING + i * (this.font.lineHeight + 2) + 1, 0xFFFFFF);
         }
     }
 
@@ -145,9 +144,9 @@ public class ConfirmationScreen extends Screen
         ResourceLocation backgroundTexture = !inGame ? MENU_LIST_BACKGROUND : IN_GAME_MENU_LIST_BACKGROUND;
         ResourceLocation headerTexture = !inGame ? Screen.HEADER_SEPARATOR : Screen.INWORLD_HEADER_SEPARATOR;
         ResourceLocation footerTexture = !inGame ? Screen.FOOTER_SEPARATOR : Screen.INWORLD_FOOTER_SEPARATOR;
-        graphics.blit(backgroundTexture, startX, startY, (float) endX, (float) endY, endX - startX, endY - startY, 32, 32);
-        graphics.blit(headerTexture, startX, startY - 2, 0, 0, endX - startX, 2, 32, 2);
-        graphics.blit(footerTexture, startX, endY, 0, 0, endX - startX, 2, 32, 2);
+        graphics.blit(RenderType::guiTextured, backgroundTexture, startX, startY, (float) endX, (float) endY, endX - startX, endY - startY, 32, 32);
+        graphics.blit(RenderType::guiTextured, headerTexture, startX, startY - 2, 0, 0, endX - startX, 2, 32, 2);
+        graphics.blit(RenderType::guiTextured, footerTexture, startX, endY, 0, 0, endX - startX, 2, 32, 2);
         RenderSystem.disableBlend();
     }
 

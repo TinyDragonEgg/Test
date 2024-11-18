@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -94,11 +95,11 @@ public class EditStringScreen extends TooltipScreen implements IEditing
         if(showValidationHint)
         {
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            graphics.blit(IconButton.ICONS, this.textField.getX() - 20, this.textField.getY() + 3, 16, 16, 11, 11, 11, 11, 64, 64);
+            graphics.blit(RenderType::guiTextured, IconButton.ICONS, this.textField.getX() - 20, this.textField.getY() + 3, 11, 11, 16, 16, 11, 11, 64, 64);
 
             if(ScreenUtil.isMouseWithin(this.textField.getX() - 20, this.textField.getY() + 3, 16, 16, mouseX, mouseY))
             {
-                this.setActiveTooltip(this.validationHint, 0xAADD0000);
+                this.setActiveTooltip(this.validationHint, TooltipStyle.ERROR);
             }
         }
 

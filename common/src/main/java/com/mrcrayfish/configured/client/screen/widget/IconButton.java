@@ -6,11 +6,14 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mrcrayfish.configured.Constants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.CoreShaders;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 
 /**
@@ -41,11 +44,6 @@ public class IconButton extends ConfiguredButton
     {
         super.renderWidget(graphics, mouseX, mouseY, partialTick);
         Minecraft mc = Minecraft.getInstance();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, this.alpha);
-        RenderSystem.enableDepthTest();
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
         int contentWidth = 10 + mc.font.width(this.label) + (!this.label.getString().isEmpty() ? 4 : 0);
         boolean renderIcon = contentWidth <= this.width;
         if(!renderIcon)
@@ -57,10 +55,9 @@ public class IconButton extends ConfiguredButton
         float brightness = this.active ? 1.0F : 0.5F;
         if(renderIcon)
         {
-            RenderSystem.setShaderColor(brightness, brightness, brightness, this.alpha);
-            graphics.blit(ICONS, iconX, iconY, 0, this.u, this.v, 11, 11, 64, 64); //TODO what happen to blit offset
+            int j = ARGB.white(brightness);
+            graphics.blit(RenderType::guiTextured, ICONS, iconX, iconY, this.u, this.v, 11, 11, 64, 64, j); //TODO what happen to blit offset
         }
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, this.alpha);
         int textColor = (this.active ? 0xFFFFFF : 0xA0A0A0) | Mth.ceil(this.alpha * 255.0F) << 24;
         graphics.drawString(mc.font, this.label, iconX + 14, iconY + 1, textColor);
     }

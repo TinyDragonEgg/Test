@@ -25,6 +25,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.CommonComponents;
@@ -317,10 +318,10 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
         if(this.config.isReadOnly())
         {
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            graphics.blit(IconButton.ICONS, this.width - 30, 14, 20, 20, 0, 33, 10, 10, 64, 64);
+            graphics.blit(RenderType::guiTextured, IconButton.ICONS, this.width - 30, 14, 0, 33, 20, 20, 10, 10, 64, 64);
             if(ScreenUtil.isMouseWithin(this.width - 30, 14, 20, 20, mouseX, mouseY))
             {
-                this.setActiveTooltip(Component.translatable("configured.gui.read_only_config"), 0xFF1E6566);
+                this.setActiveTooltip(Component.translatable("configured.gui.read_only_config"), TooltipStyle.HINT);
             }
         }
 
@@ -444,7 +445,7 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
             if(showValidationHint)
             {
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-                graphics.blit(IconButton.ICONS, left + width - 88, top + 3, 16, 16, 11, 11, 11, 11, 64, 64);
+                graphics.blit(RenderType::guiTextured, IconButton.ICONS, left + width - 88, top + 3, 11, 11, 16, 16, 11, 11, 64, 64);
             }
 
             if(!ConfigScreen.this.config.isReadOnly())
@@ -453,13 +454,13 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
                 {
                     boolean gameRestart = this.holder.requiresGameRestart();
                     RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-                    graphics.blit(IconButton.ICONS, left - 18, top + 5, 11, 11, gameRestart ? 51 : 11, 22, 11, 11, 64, 64);
+                    graphics.blit(RenderType::guiTextured, IconButton.ICONS, left - 18, top + 5, gameRestart ? 51 : 11, 22, 11, 11, 11, 11, 64, 64);
 
                     if(ScreenUtil.isMouseWithin(left - 18, top + 5, 11, 11, mouseX, mouseY))
                     {
                         String translationKey = gameRestart ? "configured.gui.requires_game_restart" : "configured.gui.requires_world_restart";
-                        int outline = gameRestart ? 0xAA487CC0 : 0xAA56B252;
-                        ConfigScreen.this.setActiveTooltip(Component.translatable(translationKey), outline);
+                        TooltipStyle style = gameRestart ? TooltipStyle.HINT : TooltipStyle.SUCCESS;
+                        ConfigScreen.this.setActiveTooltip(Component.translatable(translationKey), style);
                     }
                 }
             }
@@ -468,7 +469,7 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
             {
                 if(showValidationHint && ScreenUtil.isMouseWithin(left + width - 92, top, 23, 20, mouseX, mouseY))
                 {
-                    ConfigScreen.this.setActiveTooltip(this.validationHint, 0xAADD0000);
+                    ConfigScreen.this.setActiveTooltip(this.validationHint, TooltipStyle.ERROR);
                 }
                 else if(mouseX < ConfigScreen.this.list.getRowLeft() + ConfigScreen.this.list.getRowWidth() - 69)
                 {

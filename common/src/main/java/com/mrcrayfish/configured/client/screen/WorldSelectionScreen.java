@@ -17,6 +17,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -172,7 +173,7 @@ public class WorldSelectionScreen extends ListMenuScreen
             if(x % 2 != 0) graphics.fill(left, top, left + width, top + 24, 0x55000000);
             if(this.modifyButton.isMouseOver(mouseX, mouseY)) graphics.fill(left - 1, top - 1, left + 25, top + 25, 0xFFFFFFFF);
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            graphics.blit(this.texture != null ? this.iconId : MISSING_ICON, left, top, 24, 24, 0, 0, 64, 64, 64, 64);
+            graphics.blit(RenderType::guiTextured, this.texture != null ? this.iconId : MISSING_ICON, left, top, 24, 24, 0, 0, 64, 64, 64, 64);
             graphics.drawString(WorldSelectionScreen.this.minecraft.font, this.worldName, left + 30, top + 3, 0xFFFFFF);
             graphics.drawString(WorldSelectionScreen.this.minecraft.font, this.folderName, left + 30, top + 13, 0xFFFFFF);
             this.modifyButton.setX(left + width - 61);

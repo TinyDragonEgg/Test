@@ -8,11 +8,9 @@ import com.mrcrayfish.configured.api.IModConfig;
 import com.mrcrayfish.configured.api.ModContext;
 import com.mrcrayfish.configured.api.util.ConfigScreenHelper;
 import com.mrcrayfish.configured.client.screen.TooltipScreen;
-import com.mrcrayfish.configured.platform.Services;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.ConfigScreenHandler;
@@ -102,7 +100,7 @@ public class ClientConfigured
     }
 
     @SubscribeEvent
-    public static void onGetTooltipColor(RenderTooltipEvent.Color event)
+    public static void onGetTooltipColor(RenderTooltipEvent.Background event)
     {
         Minecraft minecraft = Minecraft.getInstance();
         if(!(minecraft.screen instanceof TooltipScreen screen))
@@ -111,11 +109,10 @@ public class ClientConfigured
         if(screen.tooltipText == null)
             return;
 
-        if(screen.tooltipOutlineColour == null)
+        if(screen.tooltipStyle == null)
             return;
 
-        event.setBorderStart(screen.tooltipOutlineColour);
-        event.setBorderEnd(screen.tooltipOutlineColour);
+        event.setBackground(screen.tooltipStyle.getTexture());
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)

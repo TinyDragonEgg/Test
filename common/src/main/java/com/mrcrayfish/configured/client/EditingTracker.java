@@ -40,7 +40,7 @@ public class EditingTracker
                 this.changed = false;
                 this.editingConfig = editing.getActiveConfig();
                 this.editingConfig.startEditing();
-                Constants.LOG.info("Started editing '" + this.editingConfig.getFileName() + "'");
+                Constants.LOG.debug("Started editing '" + this.editingConfig.getFileName() + "'");
             }
             else if(editing.getActiveConfig() == null)
             {
@@ -53,7 +53,7 @@ public class EditingTracker
         }
         else if(this.editingConfig != null)
         {
-            Constants.LOG.info("Stopped editing '" + this.editingConfig.getFileName() + "'");
+            Constants.LOG.debug("Stopped editing '" + this.editingConfig.getFileName() + "'");
             this.editingConfig.stopEditing(this.changed);
             this.editingConfig = null;
             this.changed = false;

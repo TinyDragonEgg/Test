@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mrcrayfish.configured.api.IAllowedEnums;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
+import com.mrcrayfish.configured.client.screen.widget.IconButton;
 import com.mrcrayfish.configured.client.util.ScreenUtil;
 import com.mrcrayfish.configured.util.ConfigHelper;
 import net.minecraft.ChatFormatting;
@@ -16,6 +17,7 @@ import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -73,21 +75,21 @@ public class ChangeEnumScreen extends TooltipScreen implements IEditing
         this.addWidget(this.searchTextField);
         ScreenUtil.updateSearchTextFieldSuggestion(this.searchTextField, "", this.entries);
 
+        int buttonWidth = 128;
+        int spacing = 2;
         if(!this.config.isReadOnly())
         {
-            this.addRenderableWidget(ScreenUtil.button(this.width / 2 - 155, this.height - 29, 150, 20, CommonComponents.GUI_DONE, btn ->
-            {
-                if(this.list.getSelected() != null)
-                {
+            this.addRenderableWidget(new IconButton(this.width / 2 - buttonWidth - spacing, this.height - 29, 0, 44, buttonWidth, Component.translatable("configured.gui.apply"), button -> {
+                if(this.list.getSelected() != null) {
                     this.onSave.accept(this.list.getSelected().enumValue);
                 }
                 this.minecraft.setScreen(this.parent);
             }));
         }
 
-        int cancelOffset = this.config.isReadOnly() ? -75 : -155 + 160;
+        int cancelOffset = this.config.isReadOnly() ? -(buttonWidth / 2) : spacing;
         Component cancelLabel = this.config.isReadOnly() ? CommonComponents.GUI_BACK : CommonComponents.GUI_CANCEL;
-        this.addRenderableWidget(ScreenUtil.button(this.width / 2 + cancelOffset, this.height - 29, 150, 20, cancelLabel, button -> this.minecraft.setScreen(this.parent)));
+        this.addRenderableWidget(ScreenUtil.button(this.width / 2 + cancelOffset, this.height - 29, buttonWidth, 20, cancelLabel, button -> this.minecraft.setScreen(this.parent)));
     }
 
     private void constructEntries()
@@ -116,13 +118,14 @@ public class ChangeEnumScreen extends TooltipScreen implements IEditing
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks)
     {
-        // TODO check
+        this.resetTooltip();
         super.render(graphics, mouseX, mouseY, partialTicks);
         this.list.render(graphics, mouseX, mouseY, partialTicks);
         this.searchTextField.render(graphics, mouseX, mouseY, partialTicks);
+        graphics.blit(RenderType::guiTextured, IconButton.ICONS, this.width / 2 - 128, 26, 22, 11, 14, 14, 10, 10, 64, 64);
         graphics.drawCenteredString(this.font, this.title, this.width / 2, 7, 0xFFFFFF);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        graphics.blit(ListMenuScreen.CONFIGURED_LOGO, 10, 13, 0, 0, 0, 23, 23, 32, 32);
+        graphics.blit(RenderType::guiTextured, ListMenuScreen.CONFIGURED_LOGO, 10, 13, 0, 0, 23, 23, 32, 32);
         if(ScreenUtil.isMouseWithin(10, 13, 23, 23, mouseX, mouseY))
         {
             this.setActiveTooltip(Component.translatable("configured.gui.info"));

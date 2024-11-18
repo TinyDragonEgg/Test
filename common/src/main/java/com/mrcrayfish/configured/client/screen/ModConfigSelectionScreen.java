@@ -17,6 +17,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -287,11 +288,11 @@ public class ModConfigSelectionScreen extends ListMenuScreen
             graphics.drawString(Minecraft.getInstance().font, this.title, left + 28, top + 2, 0xFFFFFF);
             graphics.drawString(Minecraft.getInstance().font, this.fileName, left + 28, top + 12, 0xFFFFFF);
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            graphics.blit(IconButton.ICONS, left + 4, top, 18, 22, this.getIconU(), this.getIconV(), 9, 11, 64, 64);
+            graphics.blit(RenderType::guiTextured, IconButton.ICONS, left + 4, top, this.getIconU(), this.getIconV(), 18, 22, 9, 11, 64, 64);
 
             if(this.config.isReadOnly())
             {
-                graphics.blit(IconButton.ICONS, left + 1, top + 15, 11, 11, 0, 33, 11, 11, 64, 64);
+                graphics.blit(RenderType::guiTextured, IconButton.ICONS, left + 1, top + 15, 0, 33, 11, 11, 11, 11, 64, 64);
             }
 
             this.modifyButton.setX(left + width - 83);
@@ -307,12 +308,12 @@ public class ModConfigSelectionScreen extends ListMenuScreen
 
             if(this.config.isReadOnly() && ScreenUtil.isMouseWithin(left - 1, top + 15, 11, 11, mouseX, mouseY))
             {
-                ModConfigSelectionScreen.this.setActiveTooltip(Component.translatable("configured.gui.read_only_config"), 0xFF1E6566);
+                ModConfigSelectionScreen.this.setActiveTooltip(Component.translatable("configured.gui.read_only_config"), TooltipStyle.HINT);
             }
 
             if(!this.modifyButton.active && this.modifyButton.isHoveredOrFocused())
             {
-                this.screen.setActiveTooltip(this.modifyTooltip, 0xAADD0000);
+                this.screen.setActiveTooltip(this.modifyTooltip, TooltipStyle.ERROR);
             }
         }
 

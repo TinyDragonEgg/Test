@@ -67,8 +67,9 @@ dependencies {
     implementation "com.mrcrayfish:framework-forge:${minecraft_version}-${framework_version}"
 
     // JEI
-    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
-    testCompileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+    // TODO revert back to minecraft property once jei has updated
+    compileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
+    testCompileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
     annotationProcessor("org.spongepowered:mixin:0.8.5-SNAPSHOT:processor")
 
     // FROM FORGE: Hack fix for now, force jopt-simple to be exactly 5.0.4 because Mojang ships that version, but some transtive dependencies request 6.0+

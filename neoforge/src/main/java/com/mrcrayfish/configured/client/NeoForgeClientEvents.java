@@ -10,7 +10,6 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
@@ -55,7 +54,7 @@ public class NeoForgeClientEvents
     }
 
     @SubscribeEvent
-    private static void onGetTooltipColor(RenderTooltipEvent.Color event)
+    private static void onGetTooltipColor(RenderTooltipEvent.Texture event)
     {
         Minecraft minecraft = Minecraft.getInstance();
         if(!(minecraft.screen instanceof TooltipScreen screen))
@@ -64,11 +63,10 @@ public class NeoForgeClientEvents
         if(screen.tooltipText == null)
             return;
 
-        if(screen.tooltipOutlineColour == null)
+        if(screen.tooltipStyle == null)
             return;
 
-        event.setBorderStart(screen.tooltipOutlineColour);
-        event.setBorderEnd(screen.tooltipOutlineColour);
+        event.setTexture(screen.tooltipStyle.getTexture());
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
