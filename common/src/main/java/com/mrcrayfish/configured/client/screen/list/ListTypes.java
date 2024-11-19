@@ -16,9 +16,7 @@ import java.util.stream.Stream;
 
 public class ListTypes
 {
-    private static final Map<IConfigValue<?>, IListType<?>> TYPE_CACHE = new HashMap<>();
     private static final IListType<?> UNKNOWN = new ListType<>(Object::toString, o -> o, "configured.parser.not_a_value");
-
     public static final IListType<Boolean> BOOLEAN = new ListType<>(Object::toString, Boolean::valueOf, "configured.parser.not_a_boolean");
     public static final IListType<Integer> INTEGER = new ListType<>(Object::toString, Ints::tryParse, "configured.parser.not_a_number");
     public static final IListType<Long> LONG = new ListType<>(Object::toString, Longs::tryParse, "configured.parser.not_a_number");
@@ -41,7 +39,6 @@ public class ListTypes
         return UNKNOWN;
     }
 
-    @SuppressWarnings("unchecked")
     public static <T> IListType<T> getType(IConfigValue<List<T>> holder)
     {
         if(holder instanceof IListConfigValue<T> provider)
@@ -52,7 +49,7 @@ public class ListTypes
                 return type;
             }
         }
-        return (IListType<T>) TYPE_CACHE.computeIfAbsent(holder, value -> fromHolder(holder));
+        return fromHolder(holder);
     }
 
     private static <T> IListType<T> fromHolder(IConfigValue<List<T>> holder)
