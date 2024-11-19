@@ -1,13 +1,13 @@
 package test.config;
 
+import com.electronwill.nightconfig.core.CommentedConfig;
+import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Arrays;
@@ -47,6 +47,7 @@ public class ConfigTest
         public final ForgeConfigSpec.ConfigValue<List<? extends Integer>> intList;
         public final ForgeConfigSpec.ConfigValue<List<? extends Long>> longList;
         public final ForgeConfigSpec.ConfigValue<List<? extends Double>> doubleList;
+        public final ForgeConfigSpec.ConfigValue<List<? extends UnmodifiableConfig>> unsupportedList;
         public final ForgeConfigSpec.EnumValue<ChatFormatting> restrictedEnums;
 
         public Test(ForgeConfigSpec.Builder builder)
@@ -70,6 +71,7 @@ public class ConfigTest
             this.listOfItems = builder.comment("This is a List of Item Locations").defineList("listOfItems", Arrays.asList("minecraft:apple", "minecraft:iron_ingot"), o -> {
                 return o instanceof String && ResourceLocation.tryParse(o.toString()) != null && !ResourceLocation.parse(o.toString()).getPath().isEmpty();
             });
+            this.unsupportedList = builder.comment("A list that is not supported").defineList("unsupportedList", List.of(CommentedConfig.inMemory()), o -> o instanceof UnmodifiableConfig);
             builder.pop();
         }
     }

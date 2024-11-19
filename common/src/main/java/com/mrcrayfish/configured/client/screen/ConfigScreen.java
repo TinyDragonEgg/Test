@@ -135,9 +135,10 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
                     case Long l -> new LongItem((IConfigValue<Long>) value);
                     case Enum<?> e -> new EnumItem((IConfigValue<Enum<?>>) value);
                     case String s -> new StringItem((IConfigValue<String>) value);
-                    case List<?> li -> new ListItem((IConfigValue<List<?>>) value);
+                    case List<?> li when ListTypes.getTypeUnsafe(value) != ListTypes.UNKNOWN ->
+                        new ListItem((IConfigValue<List<?>>) value);
                     case null, default -> {
-                        Constants.LOG.info("Unsupported config value: " + value.getName());
+                        Constants.LOG.warn("Unsupported config value '{}' from '{}'", value.getName(), this.config.getFileName());
                         yield null;
                     }
                 };
@@ -705,6 +706,24 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
             this.button.render(graphics, mouseX, mouseY, partialTicks);
         }
     }
+
+   /* public class UnsupportedItem extends Item
+    {
+        private final Button button;
+
+        public UnsupportedItem(IConfigValue<?> holder)
+        {
+            super(Component.literal(createLabelFromHolder(holder)).withStyle(ChatFormatting.RED));
+            this.button = ScreenUtil.button(10, 5, 46, 20, Component.translatable("configured.gui.edit"), button -> {});
+            this.button.active = false;
+        }
+
+        @Override
+        public List<? extends GuiEventListener> children()
+        {
+            return List.of(this.button);
+        }
+    }*/
 
     /**
      * Tries to create a readable label from the given config value and spec. This will

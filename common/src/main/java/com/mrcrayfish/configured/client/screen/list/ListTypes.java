@@ -31,6 +31,16 @@ public class ListTypes
         return (IListType<T>) UNKNOWN;
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static IListType getTypeUnsafe(IConfigValue holder)
+    {
+        if(holder.get() instanceof List<?>)
+        {
+            return getType(holder);
+        }
+        return UNKNOWN;
+    }
+
     @SuppressWarnings("unchecked")
     public static <T> IListType<T> getType(IConfigValue<List<T>> holder)
     {
