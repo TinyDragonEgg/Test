@@ -10,6 +10,7 @@ import com.mrcrayfish.configured.api.IConfigEntry;
 import com.mrcrayfish.configured.api.IConfigValue;
 import com.mrcrayfish.configured.api.IModConfig;
 import com.mrcrayfish.configured.client.EditingTracker;
+import com.mrcrayfish.configured.client.screen.list.ListTypes;
 import com.mrcrayfish.configured.client.screen.widget.CheckBoxButton;
 import com.mrcrayfish.configured.client.screen.widget.ConfiguredButton;
 import com.mrcrayfish.configured.client.screen.widget.IconButton;
@@ -126,38 +127,20 @@ public class ConfigScreen extends ListMenuScreen implements IEditing
             if(value != null)
             {
                 Object object = value.get();
-                if(object instanceof Boolean)
+                return switch(object)
                 {
-                    return new BooleanItem((IConfigValue<Boolean>) value);
-                }
-                else if(object instanceof Integer)
-                {
-                    return new IntegerItem((IConfigValue<Integer>) value);
-                }
-                else if(object instanceof Double)
-                {
-                    return new DoubleItem((IConfigValue<Double>) value);
-                }
-                else if(object instanceof Long)
-                {
-                    return new LongItem((IConfigValue<Long>) value);
-                }
-                else if(object instanceof Enum)
-                {
-                    return new EnumItem((IConfigValue<Enum<?>>) value);
-                }
-                else if(object instanceof String)
-                {
-                    return new StringItem((IConfigValue<String>) value);
-                }
-                else if(object instanceof List<?>)
-                {
-                    return new ListItem((IConfigValue<List<?>>) value);
-                }
-                else
-                {
-                    Constants.LOG.info("Unsupported config value: " + value.getName());
-                }
+                    case Boolean b -> new BooleanItem((IConfigValue<Boolean>) value);
+                    case Integer i -> new IntegerItem((IConfigValue<Integer>) value);
+                    case Double v -> new DoubleItem((IConfigValue<Double>) value);
+                    case Long l -> new LongItem((IConfigValue<Long>) value);
+                    case Enum<?> e -> new EnumItem((IConfigValue<Enum<?>>) value);
+                    case String s -> new StringItem((IConfigValue<String>) value);
+                    case List<?> li -> new ListItem((IConfigValue<List<?>>) value);
+                    case null, default -> {
+                        Constants.LOG.info("Unsupported config value: " + value.getName());
+                        yield null;
+                    }
+                };
             }
             return null;
         }
