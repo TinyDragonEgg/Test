@@ -38,7 +38,7 @@ public final class ModMenuConfigFactory implements ModMenuApi
         mods.removeIf(s -> s.equals(Constants.MOD_ID));
         mods.forEach(id -> {
             FabricLoader.getInstance().getModContainer(id).ifPresent(container -> {
-                modConfigFactories.put(id, screen -> CatalogueConfigFactory.createConfigScreen(screen, container));
+                modConfigFactories.put(id, screen -> CatalogueConfigFactory.newConfigScreen(screen, container));
             });
         });
         return modConfigFactories;
