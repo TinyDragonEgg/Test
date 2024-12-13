@@ -145,7 +145,7 @@ public class EditListScreen<T> extends Screen implements IEditing
         }
 
         @Override
-        protected int getScrollbarPosition()
+        protected int scrollBarX()
         {
             return this.width / 2 + 144;
         }

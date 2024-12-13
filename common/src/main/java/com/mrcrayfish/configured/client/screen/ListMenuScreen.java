@@ -181,7 +181,7 @@ public abstract class ListMenuScreen extends TooltipScreen
         }
 
         @Override
-        protected int getScrollbarPosition()
+        protected int scrollBarX()
         {
             return this.width / 2 + 144;
         }
