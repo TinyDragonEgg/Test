@@ -2,13 +2,10 @@ package com.mrcrayfish.configured.client.screen;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.mrcrayfish.configured.Constants;
 import com.mrcrayfish.configured.client.screen.widget.IconButton;
 import com.mrcrayfish.configured.client.util.ScreenUtil;
-import com.mrcrayfish.configured.util.ConfigHelper;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.ComponentPath;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -18,10 +15,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.CoreShaders;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -29,14 +23,11 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
-import org.jetbrains.annotations.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+import java.net.URI;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -161,7 +152,7 @@ public abstract class ListMenuScreen extends TooltipScreen
     {
         if(ScreenUtil.isMouseWithin(10, 13, 23, 23, (int) mouseX, (int) mouseY))
         {
-            Style style = Style.EMPTY.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "https://www.curseforge.com/minecraft/mc-mods/configured"));
+            Style style = Style.EMPTY.withClickEvent(new ClickEvent.OpenUrl(URI.create("https://www.curseforge.com/minecraft/mc-mods/configured")));
             this.handleComponentClicked(style);
             return true;
         }
@@ -324,9 +315,9 @@ public abstract class ListMenuScreen extends TooltipScreen
             {
                 Style style = this.bottomText.getStyle();
                 HoverEvent event = style.getHoverEvent();
-                if(event != null && event.getAction() == HoverEvent.Action.SHOW_TEXT)
+                if(event instanceof HoverEvent.ShowText(Component value))
                 {
-                    ListMenuScreen.this.setActiveTooltip(event.getValue(HoverEvent.Action.SHOW_TEXT), TooltipStyle.LINK);
+                    ListMenuScreen.this.setActiveTooltip(value, TooltipStyle.LINK);
                 }
             }
         }
@@ -367,7 +358,6 @@ public abstract class ListMenuScreen extends TooltipScreen
             super.renderWidget(graphics, mouseX, mouseY, partialTick);
             if(this.clearable && !this.getValue().isEmpty())
             {
-                RenderSystem.setShader(CoreShaders.POSITION_TEX_COLOR);
                 RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, this.alpha); // TODO test alpha
                 boolean hovered = ScreenUtil.isMouseWithin(this.getX() + this.width - 15, this.getY() + 5, 9, 9, mouseX, mouseY);
                 graphics.blit(RenderType::guiTextured, IconButton.ICONS, this.getX() + this.width - 15, this.getY() + 5, hovered ? 9 : 0, 55, 9, 9, 9, 9, 64, 64);

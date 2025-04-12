@@ -11,8 +11,8 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
-
 import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 import java.util.function.Function;
 
@@ -140,14 +140,12 @@ public class ConfirmationScreen extends Screen
     public static void drawListBackground(GuiGraphics graphics, int startX, int endX, int startY, int endY)
     {
         boolean inGame = Minecraft.getInstance().level != null;
-        RenderSystem.enableBlend();
         ResourceLocation backgroundTexture = !inGame ? MENU_LIST_BACKGROUND : IN_GAME_MENU_LIST_BACKGROUND;
         ResourceLocation headerTexture = !inGame ? Screen.HEADER_SEPARATOR : Screen.INWORLD_HEADER_SEPARATOR;
         ResourceLocation footerTexture = !inGame ? Screen.FOOTER_SEPARATOR : Screen.INWORLD_FOOTER_SEPARATOR;
         graphics.blit(RenderType::guiTextured, backgroundTexture, startX, startY, (float) endX, (float) endY, endX - startX, endY - startY, 32, 32);
         graphics.blit(RenderType::guiTextured, headerTexture, startX, startY - 2, 0, 0, endX - startX, 2, 32, 2);
         graphics.blit(RenderType::guiTextured, footerTexture, startX, endY, 0, 0, endX - startX, 2, 32, 2);
-        RenderSystem.disableBlend();
     }
 
     public static void showInfo(Minecraft minecraft, Screen parent, Component message)

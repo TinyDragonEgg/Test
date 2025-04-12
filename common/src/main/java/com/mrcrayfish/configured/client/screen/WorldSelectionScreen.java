@@ -16,6 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.FaviconTexture;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -26,12 +27,15 @@ import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageException;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.LevelSummary;
+import net.minecraft.world.level.validation.ForbiddenSymlinkInfo;
 import org.apache.commons.io.file.PathUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -122,25 +126,51 @@ public class WorldSelectionScreen extends ListMenuScreen
     {
         private final Component worldName;
         private final Component folderName;
-        private final ResourceLocation iconId;
         private Path iconFile;
-        private final DynamicTexture texture;
         private final Button modifyButton;
+        private final FaviconTexture icon;
 
         public WorldItem(LevelSummary summary)
         {
             super(summary.getLevelName());
             this.worldName = Component.literal(summary.getLevelName());
             this.folderName = Component.literal(summary.getLevelId()).withStyle(ChatFormatting.DARK_GRAY);
-            this.iconId = ResourceLocation.withDefaultNamespace("worlds/" + Util.sanitizeName(summary.getLevelId(), ResourceLocation::validPathChar) + "/" + Hashing.sha1().hashUnencodedChars(summary.getLevelId()) + "/icon");
+            this.icon = FaviconTexture.forWorld(Minecraft.getInstance().getTextureManager(), summary.getLevelId());
             this.iconFile = summary.getIcon();
-            if (!Files.isRegularFile(this.iconFile)) {
-                this.iconFile = null;
-            }
-            this.texture = this.loadWorldIcon();
+            this.validateIcon();
+            this.loadWorldIcon();
             this.modifyButton = new IconButton(0, 0, 0, this.getIconV(), 60, this.getButtonLabel(), onPress -> {
                 this.loadWorldConfig(summary.getLevelId(), summary.getLevelName());
             });
+        }
+
+        private void validateIcon()
+        {
+            if(this.iconFile == null)
+                return;
+
+            try
+            {
+                BasicFileAttributes attributes = Files.readAttributes(this.iconFile, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                if(attributes.isSymbolicLink())
+                {
+                    List<ForbiddenSymlinkInfo> list = Minecraft.getInstance().directoryValidator().validateSymlink(this.iconFile);
+                    if(!list.isEmpty())
+                    {
+                        this.iconFile = null;
+                        return;
+                    }
+                    attributes = Files.readAttributes(this.iconFile, BasicFileAttributes.class);
+                }
+                if(!attributes.isRegularFile())
+                {
+                    this.iconFile = null;
+                }
+            }
+            catch(IOException e)
+            {
+                this.iconFile = null;
+            }
         }
 
         private Component getButtonLabel()
@@ -173,7 +203,7 @@ public class WorldSelectionScreen extends ListMenuScreen
             if(x % 2 != 0) graphics.fill(left, top, left + width, top + 24, 0x55000000);
             if(this.modifyButton.isMouseOver(mouseX, mouseY)) graphics.fill(left - 1, top - 1, left + 25, top + 25, 0xFFFFFFFF);
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            graphics.blit(RenderType::guiTextured, this.texture != null ? this.iconId : MISSING_ICON, left, top, 24, 24, 0, 0, 64, 64, 64, 64);
+            graphics.blit(RenderType::guiTextured, this.icon.textureLocation(), left, top, 0, 0, 24, 24, 32, 32, 32, 32);
             graphics.drawString(WorldSelectionScreen.this.minecraft.font, this.worldName, left + 30, top + 3, 0xFFFFFF);
             graphics.drawString(WorldSelectionScreen.this.minecraft.font, this.folderName, left + 30, top + 13, 0xFFFFFF);
             this.modifyButton.setX(left + width - 61);
@@ -181,28 +211,22 @@ public class WorldSelectionScreen extends ListMenuScreen
             this.modifyButton.render(graphics, mouseX, mouseY, partialTicks);
         }
 
-        private DynamicTexture loadWorldIcon()
+        private void loadWorldIcon()
         {
-            if(this.iconFile == null)
-                return null;
+            if(this.iconFile == null || !Files.isRegularFile(this.iconFile))
+                return;
             try(InputStream is = Files.newInputStream(this.iconFile); NativeImage image = NativeImage.read(is))
             {
                 if(image.getWidth() != 64 || image.getHeight() != 64)
-                    return null;
-                DynamicTexture texture = new DynamicTexture(image);
-                WorldSelectionScreen.this.minecraft.getTextureManager().register(this.iconId, texture);
-                return texture;
+                    return;
+                this.icon.upload(image);
             }
             catch(IOException ignored) {}
-            return null;
         }
 
         public void disposeIcon()
         {
-            if(this.texture != null)
-            {
-                this.texture.close();
-            }
+            this.icon.clear();
         }
 
         private void loadWorldConfig(String worldFileName, String worldName)

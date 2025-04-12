@@ -85,7 +85,7 @@ public class ModConfigSelectionScreen extends ListMenuScreen
                     entries.add(new MultiTextItem(
                             Component.translatable("configured.gui.no_developer_status"),
                             Component.translatable("configured.gui.developer_details", Component.literal("configured.developer.toml").withStyle(ChatFormatting.GOLD).withStyle(Style.EMPTY.withUnderlined(true))).withStyle(ChatFormatting.GRAY).withStyle(style -> {
-                                return style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("configured.gui.developer_file")));
+                                return style.withHoverEvent(new HoverEvent.ShowText(Component.translatable("configured.gui.developer_file")));
                             })));
                     return;
                 }
